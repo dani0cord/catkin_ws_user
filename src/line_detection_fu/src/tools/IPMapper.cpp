@@ -3,7 +3,7 @@
 
 
 Mat IPMapper::remap(Mat input)
-{	
+{
     Mat remappedImage(outputHeight,outputWidth,CV_8UC1,Scalar(0));
     
     for(int y = 0;y < outputHeight;y++)
@@ -17,9 +17,9 @@ Mat IPMapper::remap(Mat input)
             }
         }
     }
-    
+
       //GaussianBlur(remappedImage, remappedImage, Size(5,5),1);
-    
+
     return remappedImage;
 }
 

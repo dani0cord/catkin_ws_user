@@ -6,7 +6,7 @@ using namespace std;
 const bool PUBLISH_IMAGES = true;
 
 // save frames as images in ~/.ros/
-const bool SAVE_FRAME_IMAGES = true;
+const bool SAVE_FRAME_IMAGES = false;
 
 // show windows with results of each step in pipeline of one frame
 const bool SHOW_EDGE_WINDOW = true;
@@ -188,11 +188,11 @@ void cLaneDetectionFu::ProcessInput(const sensor_msgs::Image::ConstPtr &msg) {
     cv::Mat image = cv_ptr->image.clone();
     Mat cutImage = image(cv::Rect(0, camH * 0.25f, camW, camH * 0.75f));
 
-    Mat remappedImage = ipMapper.remap(cutImage);
-    cv::Mat transformedImage = remappedImage(cv::Rect((camW / 2) - projImageWHalf + projImageHorizontalOffset,
-                                                       projYStart, projImageW, projImageH)).clone();
+    //Mat remappedImage = ipMapper.remap(cutImage);
+    //cv::Mat transformedImage =  remappedImage(cv::Rect((camW / 2) - projImageWHalf + projImageHorizontalOffset, projYStart, projImageW, projImageH)).clone();
+    cv::Mat transformedImage = cutImage;
 
-    cv::flip(transformedImage, transformedImage, 0);
+    //cv::flip(transformedImage, transformedImage, 0);
 
     // scanlines -> edges (in each scanline we find maximum and minimum of kernel fn ~= where the edge is)
     // this is where we use input image!
