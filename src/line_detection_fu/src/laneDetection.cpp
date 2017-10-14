@@ -58,7 +58,7 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
 
     priv_nh_.param<int>(node_name + "/gradientThreshold", gradientThreshold, 10);
     priv_nh_.param<int>(node_name + "/nonMaxWidth", nonMaxWidth, 16);
-    priv_nh_.param<int>(node_name + "/laneMarkingSquaredThreshold", laneMarkingSquaredThreshold, 36);
+    priv_nh_.param<int>(node_name + "/laneMarkingSquaredThreshold", laneMarkingSquaredThreshold, 800);
 
     priv_nh_.param<int>(node_name + "/angleAdjacentLeg", angleAdjacentLeg, 18);
 
@@ -427,7 +427,7 @@ vector<vector<EdgePoint>> cLaneDetectionFu::scanImage(cv::Mat image) {
 vector<FuPoint<int>> cLaneDetectionFu::extractLaneMarkings(const vector<vector<EdgePoint>> &edges) {
     vector<FuPoint<int>> result;
 
-    for (const auto &line : edges) {
+    for (const vector<EdgePoint> &line : edges) {
         if (line.empty()) continue;
 
         for (
@@ -438,6 +438,9 @@ vector<FuPoint<int>> cLaneDetectionFu::extractLaneMarkings(const vector<vector<E
             if (edgePosition->isPositive() and not nextEdgePosition->isPositive()) {
                 FuPoint<int> candidateStartEdge = edgePosition->getImgPos();
                 FuPoint<int> candidateEndEdge = nextEdgePosition->getImgPos();
+
+ROS_INFO("%d ", (candidateStartEdge - candidateEndEdge).squaredMagnitude());
+
                 if ((candidateStartEdge - candidateEndEdge).squaredMagnitude() < laneMarkingSquaredThreshold) {
                     result.push_back(center(candidateStartEdge, candidateEndEdge));
                 }
