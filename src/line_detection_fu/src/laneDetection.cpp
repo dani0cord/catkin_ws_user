@@ -40,13 +40,13 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
     priv_nh_.param<int>(node_name + "/camW", camW, 640);
     priv_nh_.param<int>(node_name + "/camH", camH, 480);
     priv_nh_.param<int>(node_name + "/projYStart", projYStart, 60);
-    priv_nh_.param<int>(node_name + "/projImageH", projImageH, 100);
-    priv_nh_.param<int>(node_name + "/projImageW", projImageW, 150);
+    priv_nh_.param<int>(node_name + "/projImageH", projImageH, 360);
+    priv_nh_.param<int>(node_name + "/projImageW", projImageW, 640);
     priv_nh_.param<int>(node_name + "/projImageHorizontalOffset", projImageHorizontalOffset, 0);
-    priv_nh_.param<int>(node_name + "/roiTopW", roiTopW, 150);
-    priv_nh_.param<int>(node_name + "/roiBottomW", roiBottomW, 57);
+    priv_nh_.param<int>(node_name + "/roiTopW", roiTopW, 620);
+    priv_nh_.param<int>(node_name + "/roiBottomW", roiBottomW, 620);
 
-    priv_nh_.param<int>(node_name + "/maxYRoi", maxYRoi, 100);
+    priv_nh_.param<int>(node_name + "/maxYRoi", maxYRoi, 360);
     priv_nh_.param<int>(node_name + "/minYDefaultRoi", minYDefaultRoi, 10);
     priv_nh_.param<int>(node_name + "/minYPolyRoi", minYPolyRoi, 11);
 
@@ -63,7 +63,7 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
     priv_nh_.param<int>(node_name + "/angleAdjacentLeg", angleAdjacentLeg, 18);
 
     priv_nh_.param<int>(node_name + "/scanlinesVerticalDistance", scanlinesVerticalDistance, 2);
-    priv_nh_.param<int>(node_name + "/scanlinesMaxCount", scanlinesMaxCount, 100);
+    priv_nh_.param<int>(node_name + "/scanlinesMaxCount", scanlinesMaxCount, 200);
 
     priv_nh_.param<int>(node_name + "/maxAngleDiff", maxAngleDiff, 14);
 
@@ -86,7 +86,7 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
     priv_nh_.param<double>(node_name + "/camDeg", camDeg, 13.0);
     priv_nh_.param<double>(node_name + "/camHeight", camHeight, 36.2);
 
-    ipMapper = IPMapper(camW, camHHalf, f_u, f_v, c_u, c_v, camDeg, camHeight);
+    //ipMapper = IPMapper(camW, camHHalf, f_u, f_v, c_u, c_v, camDeg, camHeight);
 
     projImageWHalf = projImageW / 2;
 
@@ -1214,7 +1214,7 @@ void cLaneDetectionFu::drawEdgeWindow(Mat &img, vector<vector<EdgePoint>> edges)
         for (int j = 0; j < edges[i].size(); j++) {
             FuPoint<int> edge = edges[i][j].getImgPos();
             Point edgeLoc = Point(edge.getX(), edge.getY());
-            circle(transformedImagePaintable, edgeLoc, 1, Scalar(0, 0, edges[i][j].getValue()), -1);
+            circle(transformedImagePaintable, edgeLoc, 1, Scalar(0, 255, 255), -1);//edges[i][j].getValue()), -1);
         }
     }
 

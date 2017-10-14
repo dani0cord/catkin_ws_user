@@ -4,12 +4,12 @@
     <param name="camW"                         type="int"    value="640"/>
     <param name="camH"                         type="int"    value="480"/> <!--we will use only bottom half of this...-->
     <param name="projYStart"                   type="int"    value="60"/>
-    <param name="projImageH"                   type="int"    value="100"/>
-    <param name="projImageW"                   type="int"    value="150"/>
+    <param name="projImageH"                   type="int"    value="360"/>
+    <param name="projImageW"                   type="int"    value="640"/>
     <param name="projImageHorizontalOffset"    type="int"    value="0"/>
-    <param name="roiTopW"                      type="int"    value="150"/>
-    <param name="roiBottomW"                   type="int"    value="57"/>
-    <param name="maxYRoi"                      type="int"    value="100"/>
+    <param name="roiTopW"                      type="int"    value="620"/>
+    <param name="roiBottomW"                   type="int"    value="620"/>
+    <param name="maxYRoi"                      type="int"    value="360"/>
     <param name="minYDefaultRoi"               type="int"    value="10"/>
     <param name="minYPolyRoi"                  type="int"    value="11"/>
     <param name="interestDistancePoly"         type="int"    value="10"/>
@@ -21,7 +21,7 @@
     <param name="laneMarkingSquaredThreshold"  type="int"    value="36"/>
     <param name="angleAdjacentLeg"             type="int"    value="18"/>
     <param name="scanlinesVerticalDistance"    type="int"    value="2"/>
-    <param name="scanlinesMaxCount"            type="int"    value="100"/>
+    <param name="scanlinesMaxCount"            type="int"    value="200"/>
     <param name="polyY1"                       type="int"    value="20"/>
     <param name="polyY2"                       type="int"    value="50"/>
     <param name="polyY3"                       type="int"    value="70"/>
