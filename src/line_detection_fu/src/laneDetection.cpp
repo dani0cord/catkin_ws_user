@@ -6,7 +6,7 @@ using namespace std;
 const bool PUBLISH_IMAGES = true;
 
 // save frames as images in ~/.ros/
-const bool SAVE_FRAME_IMAGES = false;
+const bool SAVE_FRAME_IMAGES = true;
 
 // show windows with results of each step in pipeline of one frame
 const bool SHOW_EDGE_WINDOW = true;
@@ -191,6 +191,8 @@ void cLaneDetectionFu::ProcessInput(const sensor_msgs::Image::ConstPtr &msg) {
     //Mat remappedImage = ipMapper.remap(cutImage);
     //cv::Mat transformedImage =  remappedImage(cv::Rect((camW / 2) - projImageWHalf + projImageHorizontalOffset, projYStart, projImageW, projImageH)).clone();
     cv::Mat transformedImage = cutImage;
+
+    cv::resize(cutImage, transformedImage, cv::Size(projImageW, projImageH));
 
     //cv::flip(transformedImage, transformedImage, 0);
 
@@ -471,7 +473,7 @@ ROS_INFO("%d ", (candidateStartEdge - candidateEndEdge).squaredMagnitude());
  */
 void cLaneDetectionFu::findLanePositions(vector<FuPoint<int>> &laneMarkings) {
     // defaultXLeft is calculated after center and right lane position is found
-    if (defaultXLeft > 0) {
+    if (defaultXCenter > 0 && defaultXRight > 0) {
         return;
     }
 
