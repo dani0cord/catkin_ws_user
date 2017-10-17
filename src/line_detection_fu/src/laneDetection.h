@@ -248,6 +248,8 @@ private:
 
     // The default width between two lanes
     double laneWidth = 45.f;
+    double upperLaneWidth = 13.f;
+    bool upperLaneWidthUpdated = false;
 
 
     /**
@@ -292,7 +294,7 @@ public:
 
     void findLanePositions(vector<FuPoint<int>> &laneMarkings);
 
-    void shiftPoint(FuPoint<double> &p, double m, double offset, int x, int y);
+    void shiftPoint(FuPoint<double> &p, double offset, int x, int y);
 
     void shiftPolynomial(NewtonPolynomial &f, NewtonPolynomial &g, double offset);
 
