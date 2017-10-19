@@ -136,10 +136,10 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
 
     imagePublisher = image_transport.advertiseCamera("/lane_model/lane_model_image", MY_ROS_QUEUE_SIZE);
 
-    if (PUBLISH_IMAGES) {
-        imagePublisherRansac = image_transport.advertiseCamera("/lane_model/ransac", MY_ROS_QUEUE_SIZE);
-        imagePublisherLaneMarkings = image_transport.advertiseCamera("/lane_model/lane_markings", MY_ROS_QUEUE_SIZE);
-    }
+#ifdef PUBLISH_IMAGES
+    imagePublisherRansac = image_transport.advertiseCamera("/lane_model/ransac", MY_ROS_QUEUE_SIZE);
+    imagePublisherLaneMarkings = image_transport.advertiseCamera("/lane_model/lane_markings", MY_ROS_QUEUE_SIZE);
+#endif
 
     if (!rgbCameraInfo) {
         rgbCameraInfo.reset(new sensor_msgs::CameraInfo());
