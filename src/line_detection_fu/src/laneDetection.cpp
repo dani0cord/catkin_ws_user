@@ -3,7 +3,7 @@
 using namespace std;
 
 // save frames as images in ~/.ros/
-//#define SAVE_FRAME_IMAGES
+#define SAVE_FRAME_IMAGES
 
 // show windows with results of each step in pipeline of one frame
 //#define SHOW_EDGE_WINDOW
@@ -579,7 +579,7 @@ void cLaneDetectionFu::findLanePositions(vector<FuPoint<int>> &laneMarkings) {
     }
 
     if (defaultXCenter > 0 && defaultXRight > 0) {
-        laneWidth = defaultXRight - defaultXCenter;
+        laneWidth = (defaultXRight - defaultXCenter);
         defaultXLeft = defaultXCenter - (int) laneWidth;
     }
 }
@@ -903,18 +903,18 @@ void cLaneDetectionFu::generateMovedPolynomials() {
     } else if (polyDetectedLeft && !polyDetectedCenter) {
         isPolyMovedCenter = true;
         //shiftPolynomial(polyLeft, movedPolyCenter, laneWidth);
-        shiftPolynomial(polyLeft, movedPolyCenter, 1);
+        shiftPolynomial(polyLeft, movedPolyCenter, 0.8f);
 
         if (!polyDetectedRight) {
             isPolyMovedRight = true;
             //shiftPolynomial(polyLeft, movedPolyRight, 2 * laneWidth);
-            shiftPolynomial(polyLeft, movedPolyRight, 2);
+            shiftPolynomial(polyLeft, movedPolyRight, 1.6f);
         }
     } else if (polyDetectedCenter) {
         if (!polyDetectedLeft) {
             isPolyMovedLeft = true;
             //shiftPolynomial(polyCenter, movedPolyLeft, -laneWidth);
-            shiftPolynomial(polyCenter, movedPolyLeft, -1);
+            shiftPolynomial(polyCenter, movedPolyLeft, -0.8);
         }
         if (!polyDetectedRight) {
             isPolyMovedRight = true;
