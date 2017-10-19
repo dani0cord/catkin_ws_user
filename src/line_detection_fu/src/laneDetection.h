@@ -250,6 +250,7 @@ private:
     double laneWidth = 45.f;
     double upperLaneWidth = 13.f;
     bool upperLaneWidthUpdated = false;
+    double laneMiddle = 0.f;
 
 
     /**

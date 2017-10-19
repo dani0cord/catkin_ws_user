@@ -3,7 +3,7 @@
 using namespace std;
 
 // save frames as images in ~/.ros/
-#define SAVE_FRAME_IMAGES
+//#define SAVE_FRAME_IMAGES
 
 // show windows with results of each step in pipeline of one frame
 #define SHOW_EDGE_WINDOW
@@ -947,8 +947,21 @@ void cLaneDetectionFu::pubAngle() {
         m = gradient(y, movedPolyRight.getInterpolationPointY(0), movedPolyRight.getInterpolationPointY(1), movedPolyRight.getCoefficients());
     }
 
-    //double offset = -1 * laneWidth / 2;
-    shiftPoint(movedPointForAngle, -0.5f, (int) xRightLane, y);
+    if (!polyDetectedCenter || !polyDetectedRight || laneMiddle <= 0) {
+        //double offset = -1 * laneWidth / 2;
+        shiftPoint(movedPointForAngle, -0.5f, (int) xRightLane, y);
+    } else if (polyDetectedCenter && polyDetectedRight) {
+        double xRight = polyRight.at(y);
+        double xCenter = polyCenter.at(y);
+        laneMiddle = (xRight - xCenter) / 2;
+
+        movedPointForAngle.setX(xCenter + laneMiddle);
+        movedPointForAngle.setY(y);
+    } else {
+        double xRight = polyDetectedRight ? polyRight.at(y) : polyCenter.at(y);
+        movedPointForAngle.setX(polyDetectedRight ? xRight - laneMiddle : xRight + laneMiddle);
+        movedPointForAngle.setY(y);
+    }
 
     pointForAngle.setX(xRightLane);
     pointForAngle.setY(y);
@@ -1021,7 +1034,7 @@ void cLaneDetectionFu::shiftPoint(FuPoint<double> &p, double offset, int x, int 
     p.setY(y);
     p.setX(x + offset * horizontalShiftLength);
 
-    ROS_INFO("laneWidth: %f, upperLaneWidth: %f, viewLaneWidthOffset: %f, horizontalShiftLength: %f, x: %f", laneWidth, upperLaneWidth, viewLaneWidthOffset, horizontalShiftLength, x + offset * horizontalShiftLength);
+    //ROS_INFO("laneWidth: %f, upperLaneWidth: %f, viewLaneWidthOffset: %f, horizontalShiftLength: %f, x: %f", laneWidth, upperLaneWidth, viewLaneWidthOffset, horizontalShiftLength, x + offset * horizontalShiftLength);
 }
 
 /**
