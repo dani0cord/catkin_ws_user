@@ -8,9 +8,9 @@ using namespace std;
 // show windows with results of each step in pipeline of one frame
 //#define SHOW_EDGE_WINDOW
 //#define SHOW_LANE_MARKINGS_WINDOW
-//#define SHOW_GROUPED_LANE_MARKINGS_WINDOW
-//#define SHOW_RANSAC_WINDOW
-//#define SHOW_ANGLE_WINDOW
+#define SHOW_GROUPED_LANE_MARKINGS_WINDOW
+#define SHOW_RANSAC_WINDOW
+#define SHOW_ANGLE_WINDOW
 
 // publish ransac and grouped lane frames to show it in rviz
 #define PUBLISH_IMAGES
@@ -600,12 +600,15 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
     laneMarkingsRight.clear();
     laneMarkingsNotUsed.clear();
 
+    ROS_INFO("Frame: %d, laneMarkings: %d", frame, sizeof(laneMarkings));
+
     for (FuPoint<int> laneMarking : laneMarkings) {
 
         // check if lane marking point is near to found lane poly of ransac
 
         if (polyDetectedRight) {
             if (isInPolyRoi(polyRight, laneMarking)) {
+                ROS_INFO("      -> polyRight");
                 laneMarkingsRight.push_back(laneMarking);
                 continue;
             }
@@ -613,6 +616,7 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
 
         if (polyDetectedCenter) {
             if (isInPolyRoi(polyCenter, laneMarking)) {
+                ROS_INFO("      -> polyCenter");
                 laneMarkingsCenter.push_back(laneMarking);
                 continue;
             }
@@ -620,6 +624,7 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
 
         if (polyDetectedLeft) {
             if (isInPolyRoi(polyLeft, laneMarking)) {
+                ROS_INFO("      -> polyLeft");
                 laneMarkingsLeft.push_back(laneMarking);
                 continue;
             }
@@ -629,6 +634,7 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
 
         if (movedPolyLeft.isInitialized()) {
             if (isInPolyRoi(movedPolyLeft, laneMarking)) {
+                ROS_INFO("      -> movedPolyLeft");
                 laneMarkingsLeft.push_back(laneMarking);
                 continue;
             }
@@ -636,6 +642,7 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
 
         if (movedPolyCenter.isInitialized()) {
             if (isInPolyRoi(movedPolyCenter, laneMarking)) {
+                ROS_INFO("      -> movedPolyCenter");
                 laneMarkingsCenter.push_back(laneMarking);
                 continue;
             }
@@ -643,6 +650,7 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
 
         if (movedPolyRight.isInitialized()) {
             if (isInPolyRoi(movedPolyRight, laneMarking)) {
+                ROS_INFO("      -> movedPolyRight");
                 laneMarkingsRight.push_back(laneMarking);
                 continue;
             }
@@ -659,6 +667,7 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
 
         if (laneMarkingsRight.size() > 0) {
             if (isInRange(laneMarkingsRight.at(laneMarkingsRight.size() - 1), laneMarking)) {
+                ROS_INFO("      -> in Range of right lane markings");
                 laneMarkingsRight.push_back(laneMarking);
                 continue;
             }
@@ -666,6 +675,7 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
 
         if (laneMarkingsCenter.size() > 0) {
             if (isInRange(laneMarkingsCenter.at(laneMarkingsCenter.size() - 1), laneMarking)) {
+                ROS_INFO("      -> in Range of center lane markings");
                 laneMarkingsCenter.push_back(laneMarking);
                 continue;
             }
@@ -673,22 +683,26 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
 
         if (laneMarkingsLeft.size() > 0) {
             if (isInRange(laneMarkingsLeft.at(laneMarkingsLeft.size() - 1), laneMarking)) {
+                ROS_INFO("      -> in Range of left lane markings");
                 laneMarkingsLeft.push_back(laneMarking);
                 continue;
             }
         }
 
         if (isInDefaultRoi(RIGHT, laneMarking)) {
+            ROS_INFO("      -> in default ROI: right lane");
             laneMarkingsRight.push_back(laneMarking);
             continue;
         }
 
         if (isInDefaultRoi(CENTER, laneMarking)) {
+            ROS_INFO("      -> in default ROI: center lane");
             laneMarkingsCenter.push_back(laneMarking);
             continue;
         }
 
         if (isInDefaultRoi(LEFT, laneMarking)) {
+            ROS_INFO("      -> in default ROI: left lane");
             laneMarkingsLeft.push_back(laneMarking);
             continue;
         }
