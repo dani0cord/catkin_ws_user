@@ -154,16 +154,21 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
     scanlines = getScanlines();
 
 #ifdef SAVE_FRAME_IMAGES
-        struct stat st;
-        if (!stat("groupedLaneMarkings",&st))
-            system("exec rm -r ./groupedLaneMarkings/*");
-        else
-            mkdir("groupedLaneMarkings", S_IRWXU);
+    struct stat st;
+    if (!stat("groupedLaneMarkings", &st))
+        system("exec rm -r ./groupedLaneMarkings/*");
+    else
+        mkdir("groupedLaneMarkings", S_IRWXU);
 
-        if (!stat("ransac",&st))
-            system("exec rm -r ./ransac/*");
-        else
-            mkdir("ransac", S_IRWXU);
+    if (!stat("ransac", &st))
+        system("exec rm -r ./ransac/*");
+    else
+        mkdir("ransac", S_IRWXU);
+
+    if (!stat("polyRange", &st))
+        system("exec rm -r ./polyRange/*");
+    else
+        mkdir("polyRange", S_IRWXU);
 #endif
 }
 
@@ -219,6 +224,7 @@ void cLaneDetectionFu::ProcessInput(const sensor_msgs::Image::ConstPtr &msg) {
 
 #if defined(PUBLISH_IMAGES) || defined(SHOW_GROUPED_LANE_MARKINGS_WINDOW)
     drawGroupedLaneMarkingsWindow(transformedImage);
+    drawPolyRangeWindow(transformedImage);
 #endif
 
     // try to fit a polynomial for each lane
@@ -1363,20 +1369,56 @@ void cLaneDetectionFu::drawGroupedLaneMarkingsWindow(Mat &img) {
 
 }
 
+void cLaneDetectionFu::drawPolyRangeWindow(cv::Mat &img) {
+    cv::Mat transformedImagePaintablePolyRange = img.clone();
+    cv::cvtColor(transformedImagePaintablePolyRange, transformedImagePaintablePolyRange, CV_GRAY2BGR);
+
+    // left poly = red, middle poly = green, right poly = blue
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(0, 0, 255), polyLeft, minYPolyRoi, maxYRoi, -interestDistancePoly);
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(0, 0, 255), polyLeft, minYPolyRoi, maxYRoi, interestDistancePoly);
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(0, 255, 0), polyCenter, minYPolyRoi, maxYRoi, -interestDistancePoly);
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(0, 255, 0), polyCenter, minYPolyRoi, maxYRoi, interestDistancePoly);
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(255, 0, 0), polyRight, minYPolyRoi, maxYRoi, -interestDistancePoly);
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(255, 0, 0), polyRight, minYPolyRoi, maxYRoi, interestDistancePoly);
+
+    // moved left poly = purple, moved middle poly = black, moved right poly = orange
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(139, 0, 139), movedPolyLeft, minYPolyRoi, maxYRoi, -interestDistancePoly);
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(139, 0, 139), movedPolyLeft, minYPolyRoi, maxYRoi, interestDistancePoly);
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(0, 0, 0), movedPolyCenter, minYPolyRoi, maxYRoi, -interestDistancePoly);
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(0, 0, 0), movedPolyCenter, minYPolyRoi, maxYRoi, interestDistancePoly);
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(51, 153, 255), movedPolyRight, minYPolyRoi, maxYRoi, -interestDistancePoly);
+    debugPaintPolynom(transformedImagePaintablePolyRange, cv::Scalar(51, 153, 255), movedPolyRight, minYPolyRoi, maxYRoi, interestDistancePoly);
+
+    debugPaintPoints(transformedImagePaintablePolyRange, Scalar(0, 0, 255), laneMarkingsLeft);
+    debugPaintPoints(transformedImagePaintablePolyRange, Scalar(0, 255, 0), laneMarkingsCenter);
+    debugPaintPoints(transformedImagePaintablePolyRange, Scalar(255, 0, 0), laneMarkingsRight);
+    debugPaintPoints(transformedImagePaintablePolyRange, Scalar(0, 255, 255), laneMarkingsNotUsed);
+
+#ifdef SHOW_GROUPED_LANE_MARKINGS_WINDOW
+    cv::namedWindow("Poly range", WINDOW_NORMAL);
+    cv::imshow("Poly range", transformedImagePaintablePolyRange);
+    cv::waitKey(1);
+#endif
+
+#ifdef SAVE_FRAME_IMAGES
+    debugWriteImg(transformedImagePaintablePolyRange, "polyRange");
+#endif
+}
+
 void cLaneDetectionFu::drawRansacWindow(cv::Mat &img) {
 
     cv::Mat transformedImagePaintableRansac = img.clone();
     cv::cvtColor(transformedImagePaintableRansac, transformedImagePaintableRansac, CV_GRAY2BGR);
 
     // left poly = red, middle poly = green, right poly = blue
-    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(0, 0, 255), polyLeft, minYPolyRoi, maxYRoi);
-    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(0, 255, 0), polyCenter, minYPolyRoi, maxYRoi);
-    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(255, 0, 0), polyRight, minYPolyRoi, maxYRoi);
+    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(0, 0, 255), polyLeft, minYPolyRoi, maxYRoi, 0);
+    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(0, 255, 0), polyCenter, minYPolyRoi, maxYRoi, 0);
+    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(255, 0, 0), polyRight, minYPolyRoi, maxYRoi, 0);
 
     // moved left poly = purple, moved middle poly = black, moved right poly = orange
-    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(139, 0, 139), movedPolyLeft, minYPolyRoi, maxYRoi);
-    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(0, 0, 0), movedPolyCenter, minYPolyRoi, maxYRoi);
-    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(51, 153, 255), movedPolyRight, minYPolyRoi, maxYRoi);
+    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(139, 0, 139), movedPolyLeft, minYPolyRoi, maxYRoi, 0);
+    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(0, 0, 0), movedPolyCenter, minYPolyRoi, maxYRoi, 0);
+    debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(51, 153, 255), movedPolyRight, minYPolyRoi, maxYRoi, 0);
 
 
 #ifdef PUBLISH_IMAGES
@@ -1467,10 +1509,10 @@ void cLaneDetectionFu::pubRGBImageMsg(cv::Mat &rgb_mat, image_transport::CameraP
     publisher.publish(rgb_img, rgbCameraInfo);
 }
 
-void cLaneDetectionFu::debugPaintPolynom(cv::Mat &m, cv::Scalar color, NewtonPolynomial &p, int start, int end) {
+void cLaneDetectionFu::debugPaintPolynom(cv::Mat &m, cv::Scalar color, NewtonPolynomial &p, int start, int end, int offset) {
     cv::Point point;
     for (int i = start; i < end; i++) {
-        point = cv::Point(p.at(i), i);
+        point = cv::Point(p.at(i) + offset, i);
         cv::circle(m, point, 0, color, -1);
     }
 }

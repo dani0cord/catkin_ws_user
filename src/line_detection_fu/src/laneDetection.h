@@ -263,13 +263,15 @@ private:
 
     void drawGroupedLaneMarkingsWindow(cv::Mat &img);
 
+    void drawPolyRangeWindow(cv::Mat &img);
+
     void drawRansacWindow(cv::Mat &img);
 
     void drawAngleWindow(cv::Mat &img);
 
     void pubRGBImageMsg(cv::Mat &rgb_mat, image_transport::CameraPublisher publisher);
 
-    void debugPaintPolynom(cv::Mat &m, cv::Scalar color, NewtonPolynomial &p, int start, int end);
+    void debugPaintPolynom(cv::Mat &m, cv::Scalar color, NewtonPolynomial &p, int start, int end, int offset);
 
     void debugPaintPoints(cv::Mat &m, cv::Scalar color, std::vector<FuPoint<int>> &points);
 
