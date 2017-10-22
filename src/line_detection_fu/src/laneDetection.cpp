@@ -122,7 +122,7 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
     movedPointForAngle = FuPoint<double>();
     pointForAngle = FuPoint<double>();
 
-    maxDistance = 1;
+    maxDistance = 4;
 
     lastAngle = 0;
 
@@ -753,6 +753,8 @@ bool cLaneDetectionFu::ransacInternal(ePosition position,
                                       vector<FuPoint<int>> &supporters, NewtonPolynomial &prevPoly) {
 
     if (laneMarkings.size() < 7) {
+        ROS_INFO("      Ransac (lane %d) abort: too few lane markings", position);
+
         prevPoly = poly;
         poly.clear();
         return false;
@@ -788,6 +790,8 @@ bool cLaneDetectionFu::ransacInternal(ePosition position,
     //what is this for?
     if (position == CENTER) {
         if (!highEnoughY) {
+            ROS_INFO("      Ransac abort: position center and !highEnoughY");
+
             prevPoly = poly;
             poly.clear();
             return false;
