@@ -6,8 +6,8 @@ using namespace std;
 #define SAVE_FRAME_IMAGES
 
 // show windows with results of each step in pipeline of one frame
-//#define SHOW_EDGE_WINDOW
-//#define SHOW_LANE_MARKINGS_WINDOW
+#define SHOW_EDGE_WINDOW
+#define SHOW_LANE_MARKINGS_WINDOW
 #define SHOW_GROUPED_LANE_MARKINGS_WINDOW
 #define SHOW_RANSAC_WINDOW
 #define SHOW_ANGLE_WINDOW
