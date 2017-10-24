@@ -21,8 +21,8 @@ public:
 
 	double at(double x) const;
 
-	double getInterpolationPointX(int pointNumber);
-	double getInterpolationPointY(int pointNumber);
+	double getInterpolationPointX(int pointNumber) const;
+	double getInterpolationPointY(int pointNumber) const;
 
 	int getDegree() const;
 	bool isInitialized() const;

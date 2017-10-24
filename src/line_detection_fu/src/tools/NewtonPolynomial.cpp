@@ -157,12 +157,12 @@ double NewtonPolynomial::at(double x) const
 	return tmp;
 }
 
-double NewtonPolynomial::getInterpolationPointX(int index)
+double NewtonPolynomial::getInterpolationPointX(int index) const
 {
 	return points[index].getY();
 }
 
-double NewtonPolynomial::getInterpolationPointY(int index)
+double NewtonPolynomial::getInterpolationPointY(int index) const
 {
 	return points[index].getX();
 }

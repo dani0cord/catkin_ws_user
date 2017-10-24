@@ -730,6 +730,9 @@ void cLaneDetectionFu::ransac() {
 
     polyDetectedRight = ransacInternal(RIGHT, laneMarkingsRight, bestPolyRight,
                                        polyRight, supportersRight, prevPolyRight);
+
+    ROS_INFO("      Ransac poly detected: left = %s, center = %s, right = %s", polyDetectedLeft ? "true" : "false",
+             polyDetectedCenter ? "true" : "false", polyDetectedRight ? "true" : "false");
 }
 
 /**
@@ -874,7 +877,7 @@ bool cLaneDetectionFu::ransacInternal(ePosition position,
                              + double(count2) / markings2.size()
                              + 3 * (double(count3) / markings3.size())) / 5;
 
-        if (proportion < proportionThreshould) {
+        if (position != CENTER && proportion < proportionThreshould) {
             poly.clear();
             //DEBUG_TEXT(dbgMessages, "Poly proportion was smaller than threshold");
             continue;
@@ -1103,9 +1106,9 @@ bool cLaneDetectionFu::isInRange(FuPoint<int> &lanePoint, FuPoint<int> &p) {
     if (p.getY() < minYDefaultRoi || p.getY() > maxYRoi) {
         return false;
     }
-    if (p.getY() > lanePoint.getY()) {
+    /*if (p.getY() > lanePoint.getY()) {
         return false;
-    }
+    }*/
 
     double distanceX = abs(p.getX() - lanePoint.getX());
     double distanceY = abs(p.getY() - lanePoint.getY());
@@ -1263,7 +1266,7 @@ bool cLaneDetectionFu::polyValid(ePosition position, NewtonPolynomial poly, Newt
  * Checks if two polynomials are similar and do not vary too much from each other.
  */
 bool cLaneDetectionFu::isSimilar(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2) {
-    FuPoint<int> p1 = FuPoint<int>(poly1.at(polyY1), polyY1);
+    /*FuPoint<int> p1 = FuPoint<int>(poly1.at(polyY1), polyY1);
     FuPoint<int> p2 = FuPoint<int>(poly2.at(polyY1), polyY1);
 
     if (horizDistance(p1, p2) > interestDistancePoly) { //0.05 * meters
@@ -1282,12 +1285,43 @@ bool cLaneDetectionFu::isSimilar(const NewtonPolynomial &poly1, const NewtonPoly
 
     if (horizDistance(p5, p6) > interestDistancePoly) { //0.05 * meters
         return false;
+    }*/
+
+    if (largeDistance(poly1, poly2, polyY1)) {
+        return false;
+    }
+
+    if (largeDistance(poly1, poly2, polyY2)) {
+        return false;
+    }
+
+    if (largeDistance(poly1, poly2, polyY3)) {
+        return false;
     }
 
     return true;
 }
 
+bool cLaneDetectionFu::largeDistance(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2, int y) {
+    FuPoint<int> p1 = FuPoint<int>((int) poly1.at(y), y);
+    FuPoint<int> p1Changed = FuPoint<int>(y, (int) poly1.at(y));
 
+    double m = gradient(y, poly1.getInterpolationPointY(0), poly1.getInterpolationPointY(1), poly1.getCoefficients());
+    //m = -1 / m;
+
+    double yIntersection = intersection(p1Changed, m, poly2.getInterpolationPointY(0), poly2.getInterpolationPointY(1), poly2.getCoefficients());
+
+    double xIntersection = poly2.at(y);
+    FuPoint<int> p2 = FuPoint<int>((int) xIntersection, (int) yIntersection);
+
+
+    int distanceX = abs(p1.getX() - p2.getX());
+    int distanceY = abs(p1.getY() - p2.getY());
+    ROS_INFO("           p1: (%d, %d), p2: (%d, %d), distance: (%d, %d), gradient: %f", p1.getX(), p1.getY(), p2.getX(), p2.getY(), distanceX, distanceY, m);
+
+
+    return !isInRange(p1, p2);
+}
 
 /*
  *      debug functions
@@ -1620,7 +1654,7 @@ int main(int argc, char **argv) {
  * @param coeffs    The coeffs of the second polynomial with newton basis
  * @return          The x value of the intersection point of normal and 2nd poly
  */
-double cLaneDetectionFu::intersection(FuPoint<double> &p, double &m,
+/*double cLaneDetectionFu::intersection(FuPoint<double> &p, double &m,
                                       vector<FuPoint<int>> &points, vector<double> &coeffs) {
     double a = coeffs[2];
     double b = coeffs[1] - (coeffs[2] * points[1].getY())
@@ -1639,6 +1673,31 @@ double cLaneDetectionFu::intersection(FuPoint<double> &p, double &m,
     x1 = (-b + sqrt(pow(b, 2) - (4 * a * c))) / (2 * a);
     x2 = (-b - sqrt(pow(b, 2) - (4 * a * c))) / (2 * a);
     return fmax(x1, x2);
+}*/
+
+double cLaneDetectionFu::intersection(FuPoint<int> &p, double &m,
+                                      double interpolationPoint0Y, double interpolationPoint1Y, vector<double> coeffs) {
+    double a = coeffs[2] + 0.000000001f;
+    double b = coeffs[1] - (coeffs[2] * interpolationPoint1Y)
+               - (coeffs[2] * interpolationPoint0Y) + (1.0 / m);
+    double c = coeffs[0] - (coeffs[1] * interpolationPoint0Y)
+               + (coeffs[2] * interpolationPoint0Y * interpolationPoint1Y)
+               - p.getY() - (p.getX() / m);
+
+    double dis = pow(b, 2) - (4 * a * c);
+    double x1 = 0;
+    double x2 = 0;
+
+    if (dis < 0) return -1;
+    if (dis == 0) return -b / (2 * a);
+
+    x1 = (-b + sqrt(pow(b, 2) - (4 * a * c))) / (2 * a);
+    x2 = (-b - sqrt(pow(b, 2) - (4 * a * c))) / (2 * a);
+
+    double distanceX1 = abs(x1 - p.getX());
+    double distanceX2 = abs(x2 - p.getX());
+
+    return distanceX1 < distanceX2 ? x1 : x2;
 }
 
 /**
@@ -1648,21 +1707,21 @@ double cLaneDetectionFu::intersection(FuPoint<double> &p, double &m,
  *
  * @param x         The given x value of the point on the first polynomial
  * @param poly1     The first polynomial
- * @param points1   The data points used for interpolating the first poly
- * @param points2   The data points used for interpolating the second poly
+ * @param interpolationPoint0Y    The first data point used for interpolating the second polynomial
+ * @param interpolationPoint1Y    The second data point used for interpolating the second polynomial
  * @param coeffs1   The coeffs of the first poly using newton basis
  * @param coeffs2   The coeffs of the second poly using newton basis
  * @param m1        The gradient of the first poly at x
  * @return          The gradient of the second poly at the intersection point
  */
 double cLaneDetectionFu::nextGradient(double x, NewtonPolynomial &poly1,
-                                      vector<FuPoint<int>> &points1, vector<FuPoint<int>> &points2,
+                                      double &interpolationPoint0Y, double &interpolationPoint1Y,
                                       vector<double> coeffs1, vector<double> coeffs2, double m1) {
 
-    FuPoint<double> p = FuPoint<double>(x, poly1.at(x));
-    double x2 = intersection(p, m1, points2, coeffs2);
+    FuPoint<int> p = FuPoint<int>(x, poly1.at(x));
+    double x2 = intersection(p, m1, interpolationPoint0Y, interpolationPoint1Y, coeffs2);
 
-    return gradient(x2, points2.at(0).getY(), points2.at(1).getY(), coeffs2);
+    return gradient(x2, interpolationPoint0Y, interpolationPoint1Y, coeffs2);
 }
 
 /**
