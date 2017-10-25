@@ -52,6 +52,7 @@ THIS SOFTWARE IS PROVIDED BY AUDI AG AND CONTRIBUTORS �AS IS� AND ANY EXPRES
 #include <stdlib.h>
 #include <sys/stat.h>
 
+#include "tools/Line.h"
 #include "tools/LineSegment.h"
 #include "tools/Edges.h"
 #include "tools/NewtonPolynomial.h"
@@ -79,6 +80,13 @@ private:
     int roiTopW;
 
     int roiBottomW;
+
+    int minYRoiLeft;
+    int maxYRoiLeft;
+    int minYRoiCenter;
+    int maxYRoiCenter;
+    int minYRoiRight;
+    int maxYRoiRight;
 
     int scanlinesVerticalDistance;
     int scanlinesMaxCount;
@@ -166,15 +174,15 @@ private:
 
     /**
      * Horizontal relative positions of the default lane marking lines.
-
+     *
      *
      * These lines are situated in a position, where the lane markings of a
      * straight lane would show up in the relative coordinate system with the
      * car standing in the center of the right lane.
      */
-    int defaultXLeft = 0;
-    int defaultXCenter = 0;
-    int defaultXRight = 0;
+    Line<int> defaultXLeft;
+    Line<int> defaultXCenter;
+    Line<int> defaultXRight;
 
     /**
      * Flags to determine if a valid polynomial was detected in the last frame

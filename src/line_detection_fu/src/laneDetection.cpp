@@ -37,6 +37,13 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
 
     priv_nh_.param<string>(node_name + "/cameraName", cameraName, "/usb_cam/image_raw");
 
+    priv_nh_.param<int>(node_name + "/minYRoiLeft", minYRoiLeft, 10);
+    priv_nh_.param<int>(node_name + "/maxYRoiLeft", maxYRoiLeft, 10);
+    priv_nh_.param<int>(node_name + "/minYRoiCenter", minYRoiCenter, 50);
+    priv_nh_.param<int>(node_name + "/maxYRoiCenter", maxYRoiCenter, 60);
+    priv_nh_.param<int>(node_name + "/minYRoiRight", minYRoiRight, 120);
+    priv_nh_.param<int>(node_name + "/maxYRoiRight", maxYRoiRight, 130);
+
     priv_nh_.param<int>(node_name + "/camW", camW, 640);
     priv_nh_.param<int>(node_name + "/camH", camH, 480);
     priv_nh_.param<int>(node_name + "/projYStart", projYStart, 60);
@@ -118,6 +125,19 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
     movedPolyLeft = NewtonPolynomial();
     movedPolyCenter = NewtonPolynomial();
     movedPolyRight = NewtonPolynomial();
+
+    defaultXLeft = Line<int>(
+        FuPoint<int>(minYRoiLeft, minYPolyRoi),
+        FuPoint<int>(maxYRoiLeft, maxYRoi)
+    );
+    defaultXCenter = Line<int>(
+        FuPoint<int>(minYRoiCenter, minYPolyRoi),
+        FuPoint<int>(maxYRoiCenter, maxYRoi)
+    );
+    defaultXRight = Line<int>(
+        FuPoint<int>(minYRoiRight, minYPolyRoi),
+        FuPoint<int>(maxYRoiRight, maxYRoi)
+    );
 
     movedPointForAngle = FuPoint<double>();
     pointForAngle = FuPoint<double>();
@@ -217,7 +237,7 @@ void cLaneDetectionFu::ProcessInput(const sensor_msgs::Image::ConstPtr &msg) {
 #endif
 
     // initialize defaultXLeft, defaultXCenter and defaultXRight values
-    findLanePositions(laneMarkings);
+    //findLanePositions(laneMarkings);
 
     // assign lane markings to lanes
     buildLaneMarkingsLists(laneMarkings);
@@ -490,6 +510,8 @@ vector<FuPoint<int>> cLaneDetectionFu::extractLaneMarkings(const vector<vector<E
  *
  * Start position of left lane is calculated after start positions of center and right lanes are found.
  */
+
+#if 0
 void cLaneDetectionFu::findLanePositions(vector<FuPoint<int>> &laneMarkings) {
     // defaultXLeft is calculated after center and right lane position is found
     if (defaultXCenter > 0 && defaultXRight > 0) {
@@ -589,6 +611,7 @@ void cLaneDetectionFu::findLanePositions(vector<FuPoint<int>> &laneMarkings) {
         defaultXLeft = defaultXCenter - (int) laneWidth;
     }
 }
+#endif
 
 /**
  * Creates three vectors of lane marking points out of the given lane marking
@@ -663,6 +686,9 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
         }
 
         // if ransac found a polynomial in last frame skip default lane comparison
+        /*
+         * could this be an issue?
+         */
         if (polyDetectedLeft || polyDetectedCenter || polyDetectedRight) {
             continue;
         }
@@ -897,6 +923,14 @@ bool cLaneDetectionFu::ransacInternal(ePosition position,
  * so they can be used in the next cycle to group the lane markings.
  */
 void cLaneDetectionFu::generateMovedPolynomials() {
+/*
+ * could this be an issue? we clear the moved polys beforehand ...
+ */
+    if ((!polyDetectedLeft && !polyDetectedCenter && !polyDetectedRight)
+        || (polyDetectedLeft && polyDetectedCenter && polyDetectedRight)) {
+        return;
+    }
+
     movedPolyLeft.clear();
     movedPolyCenter.clear();
     movedPolyRight.clear();
@@ -904,11 +938,6 @@ void cLaneDetectionFu::generateMovedPolynomials() {
     isPolyMovedLeft = false;
     isPolyMovedCenter = false;
     isPolyMovedRight = false;
-
-    if ((!polyDetectedLeft && !polyDetectedCenter && !polyDetectedRight)
-        || (polyDetectedLeft && polyDetectedCenter && polyDetectedRight)) {
-        return;
-    }
 
     if (polyDetectedRight && !polyDetectedCenter) {
         isPolyMovedCenter = true;
@@ -951,7 +980,7 @@ void cLaneDetectionFu::generateMovedPolynomials() {
   * car is published.
   */
 void cLaneDetectionFu::pubAngle() {
-    if (!upperLaneWidthUpdated || (!polyDetectedRight && !isPolyMovedRight)) {
+    if (/*!upperLaneWidthUpdated || */(!polyDetectedRight && !isPolyMovedRight)) {
         return;
     }
 
@@ -988,7 +1017,7 @@ void cLaneDetectionFu::pubAngle() {
 
     gradientForAngle = m;
 
-    double oppositeLeg = movedPointForAngle.getX() - (defaultXCenter + (defaultXRight - defaultXCenter) / 2);
+    double oppositeLeg = movedPointForAngle.getX() - (defaultXCenter.atY(movedPointForAngle.getY()) + (defaultXRight.atX(movedPointForAngle.getY()) - defaultXCenter.atY(movedPointForAngle.getY())) / 2);
     double adjacentLeg = projImageH - movedPointForAngle.getY();
     double result = atan(oppositeLeg / adjacentLeg) * 180 / PI;
 
@@ -1075,9 +1104,13 @@ void cLaneDetectionFu::shiftPolynomial(NewtonPolynomial &f, NewtonPolynomial &g,
         g.addData(shiftedPoint);
     }*/
 
-    if (!upperLaneWidthUpdated) {
-        return;
-    }
+/*
+ * could this be an issue?
+ */
+
+//    if (!upperLaneWidthUpdated) {
+//        return;
+//    }
 
     FuPoint<double> shiftedPoint;
     for (int i = 0; i < 3; i++) {
@@ -1119,11 +1152,16 @@ bool cLaneDetectionFu::isInRange(FuPoint<int> &lanePoint, FuPoint<int> &p) {
  * @return      The horizontal distance between default line and point, horizontal distance = difference in X!!!
  */
 int cLaneDetectionFu::horizDistanceToDefaultLine(ePosition &line, FuPoint<int> &p) {
-    double pX = p.getX();
 
-    if (LEFT == line)   return abs(pX - defaultXLeft);
-    if (CENTER == line) return abs(pX - defaultXCenter);
-    if (RIGHT == line)  return abs(pX - defaultXRight);
+    if (LEFT == line) {
+        return defaultXLeft.horizDistance(p);
+    }
+    if (CENTER == line) {
+        return defaultXCenter.horizDistance(p);
+    }
+    if (RIGHT == line) {
+        return defaultXRight.horizDistance(p);
+    }
     return 0.f;
 }
 
@@ -1332,16 +1370,16 @@ void cLaneDetectionFu::drawGroupedLaneMarkingsWindow(Mat &img) {
     debugPaintPoints(transformedImagePaintable, Scalar(255, 0, 0), laneMarkingsRight);
     debugPaintPoints(transformedImagePaintable, Scalar(0, 255, 255), laneMarkingsNotUsed);
 
-    cv::Point2d p1l(defaultXLeft, minYPolyRoi);
-    cv::Point2d p2l(defaultXLeft, maxYRoi - 1);
+    cv::Point2d p1l(defaultXLeft.getStart().getX(), minYPolyRoi);
+    cv::Point2d p2l(defaultXLeft.getEnd().getX(), maxYRoi - 1);
     cv::line(transformedImagePaintable, p1l, p2l, cv::Scalar(0, 0, 255));
 
-    cv::Point2d p1c(defaultXCenter, minYPolyRoi);
-    cv::Point2d p2c(defaultXCenter, maxYRoi - 1);
+    cv::Point2d p1c(defaultXCenter.getStart().getX(), minYPolyRoi);
+    cv::Point2d p2c(defaultXCenter.getEnd().getX(), maxYRoi - 1);
     cv::line(transformedImagePaintable, p1c, p2c, cv::Scalar(0, 255, 0));
 
-    cv::Point2d p1r(defaultXRight, minYPolyRoi);
-    cv::Point2d p2r(defaultXRight, maxYRoi - 1);
+    cv::Point2d p1r(defaultXRight.getStart().getX(), minYPolyRoi);
+    cv::Point2d p2r(defaultXRight.getEnd().getX(), maxYRoi - 1);
     cv::line(transformedImagePaintable, p1r, p2r, cv::Scalar(255, 0, 0));
 
     cv::Point2d p1(projImageWHalf - (roiBottomW / 2), maxYRoi - 1);
@@ -1443,7 +1481,7 @@ void cLaneDetectionFu::drawAngleWindow(Mat &img) {
     cvtColor(transformedImagePaintableLaneModel, transformedImagePaintableLaneModel, CV_GRAY2BGR);
 
     if (polyDetectedRight || isPolyMovedRight) {
-        double carPositionX = defaultXCenter + (defaultXRight - defaultXCenter) / 2;
+        double carPositionX = defaultXCenter.getEnd().getX() + (defaultXRight.getEnd().getX() - defaultXCenter.getEnd().getX()) / 2;
 
         cv::Point pointLoc = cv::Point(carPositionX, projImageH);
         cv::circle(transformedImagePaintableLaneModel, pointLoc, 2, cv::Scalar(0, 0, 255), -1);
@@ -1562,6 +1600,29 @@ void cLaneDetectionFu::config_callback(line_detection_fu::LaneDetectionConfig &c
     scanlinesVerticalDistance = config.scanlinesVerticalDistance;
     scanlinesMaxCount = config.scanlinesMaxCount;
 
+    defaultXLeft = Line<int>(
+        FuPoint<int>(config.minYRoiLeft, minYPolyRoi),
+        FuPoint<int>(config.maxYRoiLeft, maxYRoi)
+    );
+    defaultXCenter = Line<int>(
+        FuPoint<int>(config.minYRoiCenter, minYPolyRoi),
+        FuPoint<int>(config.maxYRoiCenter, maxYRoi)
+    );
+    defaultXRight = Line<int>(
+        FuPoint<int>(config.minYRoiRight, minYPolyRoi),
+        FuPoint<int>(config.maxYRoiRight, maxYRoi)
+    );
+
+/*
+    defaultXLeft.getStart().setX(config.minYRoiLeft);
+    defaultXLeft.getEnd().setX(config.maxYRoiLeft);
+
+    defaultXCenter.getStart().setX(config.minYRoiCenter);
+    defaultXCenter.getEnd().setX(config.maxYRoiCenter);
+
+    defaultXRight.getStart().setX(config.minYRoiRight);
+    defaultXRight.getEnd().setX(config.maxYRoiRight);
+*/
     scanlines = getScanlines();
 }
 

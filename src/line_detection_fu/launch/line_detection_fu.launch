@@ -1,6 +1,12 @@
 <launch>
 
   <node name="line_detection_fu_node" pkg="line_detection_fu" type="line_detection_fu_node" output="log" >
+    <param name="minYRoiLeft"                  type="int"    value="10"/>
+    <param name="maxYRoiLeft"                  type="int"    value="10"/>
+    <param name="minYRoiCenter"                type="int"    value="50"/>
+    <param name="maxYRoiCenter"                type="int"    value="60"/>
+    <param name="minYRoiRight"                 type="int"    value="120"/>
+    <param name="maxYRoiRight"                 type="int"    value="130"/>
     <param name="camW"                         type="int"    value="640"/>
     <param name="camH"                         type="int"    value="480"/> <!--we will use only bottom half of this...-->
     <param name="projYStart"                   type="int"    value="0"/>
