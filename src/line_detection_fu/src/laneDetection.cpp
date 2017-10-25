@@ -686,9 +686,7 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
         }
 
         // if ransac found a polynomial in last frame skip default lane comparison
-        /*
-         * could this be an issue?
-         */
+        // TODO: could this be an issue?
         if (polyDetectedLeft || polyDetectedCenter || polyDetectedRight) {
             continue;
         }
@@ -930,13 +928,7 @@ bool cLaneDetectionFu::ransacInternal(ePosition position,
  * so they can be used in the next cycle to group the lane markings.
  */
 void cLaneDetectionFu::generateMovedPolynomials() {
-/*
- * could this be an issue? we clear the moved polys beforehand ...
- */
-    if ((!polyDetectedLeft && !polyDetectedCenter && !polyDetectedRight)
-        || (polyDetectedLeft && polyDetectedCenter && polyDetectedRight)) {
-        return;
-    }
+    // TODO: could this be an issue? we clear the moved polys beforehand ...
 
     movedPolyLeft.clear();
     movedPolyCenter.clear();
@@ -945,6 +937,11 @@ void cLaneDetectionFu::generateMovedPolynomials() {
     isPolyMovedLeft = false;
     isPolyMovedCenter = false;
     isPolyMovedRight = false;
+
+    if ((!polyDetectedLeft && !polyDetectedCenter && !polyDetectedRight)
+        || (polyDetectedLeft && polyDetectedCenter && polyDetectedRight)) {
+        return;
+    }
 
     if (polyDetectedRight && !polyDetectedCenter) {
         isPolyMovedCenter = true;
@@ -987,7 +984,7 @@ void cLaneDetectionFu::generateMovedPolynomials() {
   * car is published.
   */
 void cLaneDetectionFu::pubAngle() {
-    if (/*!upperLaneWidthUpdated || */(!polyDetectedRight && !isPolyMovedRight)) {
+    if (!upperLaneWidthUpdated || (!polyDetectedRight && !isPolyMovedRight)) {
         return;
     }
 
@@ -1111,13 +1108,11 @@ void cLaneDetectionFu::shiftPolynomial(NewtonPolynomial &f, NewtonPolynomial &g,
         g.addData(shiftedPoint);
     }*/
 
-/*
- * could this be an issue?
- */
 
-//    if (!upperLaneWidthUpdated) {
-//        return;
-//    }
+    //TODO: could this be an issue?
+    if (!upperLaneWidthUpdated) {
+        return;
+    }
 
     FuPoint<double> shiftedPoint;
     for (int i = 0; i < 3; i++) {
