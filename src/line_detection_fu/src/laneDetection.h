@@ -311,6 +311,8 @@ public:
 
     void generateMovedPolynomials();
 
+    bool isInRangeAndImage(FuPoint<int> &lanePoint, FuPoint<int> &p);
+
     bool isInRange(FuPoint<int> &lanePoint, FuPoint<int> &p);
 
     int horizDistanceToDefaultLine(ePosition &line, FuPoint<int> &p);

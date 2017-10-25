@@ -24,7 +24,7 @@
     <param name="proportionThreshould"         type="double" value="0.68"/>
     <param name="gradientThreshold"            type="int"    value="5"/>
     <param name="nonMaxWidth"                  type="int"    value="20"/>
-    <param name="laneMarkingSquaredThreshold"  type="int"    value="56"/>
+    <param name="laneMarkingSquaredThreshold"  type="int"    value="40"/>
     <param name="angleAdjacentLeg"             type="int"    value="18"/>
     <param name="scanlinesVerticalDistance"    type="int"    value="2"/>
     <param name="scanlinesMaxCount"            type="int"    value="100"/>
