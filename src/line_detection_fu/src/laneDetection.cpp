@@ -705,10 +705,10 @@ void cLaneDetectionFu::buildLaneMarkingsLists(const vector<FuPoint<int>> &laneMa
 
         // if ransac found a polynomial in last frame skip default lane comparison
         // TODO: could this be an issue?
-        if (polyDetectedLeft || polyDetectedCenter || polyDetectedRight) {
+/*        if (polyDetectedLeft || polyDetectedCenter || polyDetectedRight) {
             continue;
         }
-
+*/
         // no poly available from last frame, check if lane marking point is near to
         // default lane or near to already classified point (this way points are also
         // classified properly if car starts in a turn)

@@ -99,7 +99,11 @@ public:
     T horizDistance(FuPoint<T> &p) {
         if (isInitialized()) {
             if (properties.isHorizontalConstant) {
-                ROS_INFO("Line.h horizDistance(): vertical constant line");
+                // point on line
+                if (p.getY() == start.getY()) {
+                    return 0;
+                }
+                ROS_INFO("Line.h horizDistance(): horizontal constant line");
                 return -1;
             }
             return std::abs(p.getX() - atY(p.getY()));
@@ -140,6 +144,8 @@ private:
         }
 
         ROS_INFO("Line.h: start = (%d, %d), end = (%d, %d)", start.getX(), start.getY(), end.getX(), end.getY());
+        properties.isVerticalConstant = 0;
+        properties.isHorizontalConstant = 0;
 
         initialized = true;
 
