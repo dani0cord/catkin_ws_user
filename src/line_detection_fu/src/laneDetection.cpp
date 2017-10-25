@@ -1254,7 +1254,7 @@ bool cLaneDetectionFu::isInDefaultRoi(ePosition position, FuPoint<int> &p) {
         return false;
     } else {
         int distance = horizDistanceToDefaultLine(position, p);
-
+        ROS_INFO("%d", distance);
         return distance >= 0 && distance <= interestDistanceDefault;
     }
 }

@@ -106,10 +106,10 @@ public:
                 ROS_INFO("Line.h horizDistance(): horizontal constant line");
                 return -1;
             }
-            return std::abs(p.getX() - atY(p.getY()));
+            return std::abs(std::abs(p.getX()) - std::abs(atY(p.getY())));
         }
         if (startValueSet) {
-            return std::abs(p.getX() - start.getX());
+            return std::abs(std::abs(p.getX()) - std::abs(start.getX()));
         }
         return -1;
     }
@@ -157,7 +157,7 @@ private:
             properties.isHorizontalConstant = 1;
             return;
         }
-        m = (double) (start.getX() - end.getX()) / (double) (start.getY() - end.getY());
+        m = (double) (start.getY() - end.getY()) / (double) (start.getX() - end.getX());
         double tmp = 1.f / ((((double) end.getX() / (double) start.getX()) - 1.f) + 0.0001f);
         n = tmp * ((double) (start.getY() - end.getY()) + (double) start.getY());
     }
