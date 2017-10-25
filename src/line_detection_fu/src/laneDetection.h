@@ -332,15 +332,17 @@ public:
 
     bool isSimilar(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2);
 
+    bool largeDistance(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2, int y);
+
     int horizDistance(FuPoint<int> &p1, FuPoint<int> &p2);
 
     double gradient(double, double, double, std::vector<double>);
 
-    double intersection(FuPoint<double> &, double &, std::vector<FuPoint<int>> &,
-                        std::vector<double> &);
+    double intersection(FuPoint<int> &, double &, double, double,
+                        std::vector<double>);
 
     double nextGradient(double, NewtonPolynomial &,
-                        std::vector<FuPoint<int>> &, std::vector<FuPoint<int>> &,
+                        double &, double &,
                         std::vector<double>, std::vector<double>, double);
 
     bool gradientsSimilar(double &, double &);
