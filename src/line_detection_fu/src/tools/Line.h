@@ -97,7 +97,7 @@ return r;
 
         }
         if (startValueSet) {
-            return end.getX();
+            return start.getX();
         }
         return -1;
     }
