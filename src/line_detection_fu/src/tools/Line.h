@@ -70,7 +70,11 @@ public:
             ROS_INFO("Line.h atX(): vertical constant line");
             return -1;
         }
-        return (m * x + n);
+            double t = (double) (x - start.getX()) / (double) (start.getX()-end.getX());
+            double r = start.getY() + t * (start.getY() - end.getY());
+
+ROS_INFO("atX: t = %f, r = %f");
+return r;
     }
 
     /*
@@ -85,10 +89,15 @@ public:
             if (properties.isVerticalConstant) {
                 return start.getX();
             }
-            return (y - n) / m;
+            double t = (double) (y - start.getY()) / (double) (start.getY()-end.getY());
+            double r = start.getX() + t * (start.getX() - end.getX());
+
+ROS_INFO("atY: t = %f, r = %f");
+return r;
+
         }
         if (startValueSet) {
-            return start.getX();
+            return end.getX();
         }
         return -1;
     }
@@ -157,9 +166,9 @@ private:
             properties.isHorizontalConstant = 1;
             return;
         }
-        m = (double) (start.getY() - end.getY()) / (double) (start.getX() - end.getX());
-        double tmp = 1.f / ((((double) end.getX() / (double) start.getX()) - 1.f) + 0.0001f);
-        n = tmp * ((double) (start.getY() - end.getY()) + (double) start.getY());
+        //m = (double) (end.getY() - start.getY()) / (double) (end.getX() - start.getX());
+        //double tmp = 1.f / ((((double) start.getX() / (double) end.getX()) - 1.f) + 0.0001f);
+        //n = tmp * ((double) (end.getY() - start.getY()) + (double) end.getY());
     }
 };
 
