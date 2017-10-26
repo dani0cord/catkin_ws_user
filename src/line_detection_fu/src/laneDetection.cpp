@@ -1031,22 +1031,31 @@ void cLaneDetectionFu::generateMovedPolynomials() {
   * car is published.
   */
 void cLaneDetectionFu::pubAngle() {
+    /*
+     * we didn't detect anything
+     */
     if (!upperLaneWidthUpdated || (!polyDetectedRight && !isPolyMovedRight)) {
         return;
     }
 
+    /*
+     * 
+     */
     int y = projImageH - angleAdjacentLeg;
     double xRightLane;
-    double m;
+
 
     if (polyDetectedRight) {
         xRightLane = polyRight.at(y);
-        m = gradient(y, polyRight.getInterpolationPointY(0), polyRight.getInterpolationPointY(1), polyRight.getCoefficients());
+        gradientForAngle = gradient(y, polyRight.getInterpolationPointY(0), polyRight.getInterpolationPointY(1), polyRight.getCoefficients());
     } else {
         xRightLane = movedPolyRight.at(y);
-        m = gradient(y, movedPolyRight.getInterpolationPointY(0), movedPolyRight.getInterpolationPointY(1), movedPolyRight.getCoefficients());
+        gradientForAngle = gradient(y, movedPolyRight.getInterpolationPointY(0), movedPolyRight.getInterpolationPointY(1), movedPolyRight.getCoefficients());
     }
 
+    /*
+     * find the mid of the lane, if no polynomials were detected use previous values
+     */
     if (!polyDetectedCenter || !polyDetectedRight || laneMiddle <= 0) {
         //double offset = -1 * laneWidth / 2;
         shiftPoint(movedPointForAngle, -0.5f, (int) xRightLane, y);
@@ -1066,8 +1075,6 @@ void cLaneDetectionFu::pubAngle() {
     pointForAngle.setX(xRightLane);
     pointForAngle.setY(y);
 
-    gradientForAngle = m;
-
     int centerXMovedCenter = defaultXCenter.atY(movedPointForAngle.getY());
     int centerXMovedRight = defaultXRight.atX(movedPointForAngle.getY());
 
@@ -1075,6 +1082,9 @@ void cLaneDetectionFu::pubAngle() {
         return;
     }
 
+    /*
+     * calculate steering angle
+     */
     double oppositeLeg = movedPointForAngle.getX() - (centerXMovedCenter + (centerXMovedRight - centerXMovedCenter) / 2);
     double adjacentLeg = projImageH - movedPointForAngle.getY();
     double result = atan(oppositeLeg / adjacentLeg) * 180 / PI;
