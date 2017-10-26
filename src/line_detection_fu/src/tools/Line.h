@@ -106,7 +106,10 @@ public:
                 ROS_INFO("Line.h horizDistance(): horizontal constant line");
                 return -1;
             }
-            return std::abs(std::abs(p.getX()) - std::abs(atY(p.getY())));
+
+            ROS_INFO("Linie.h: m: %f, n: %f, x: %d, y: %d, atY: %d", m, n, p.getX(), p.getY(), atY(p.getY()));
+
+            return std::abs(atY(p.getY()) - p.getX());
         }
         if (startValueSet) {
             return std::abs(std::abs(p.getX()) - std::abs(start.getX()));
