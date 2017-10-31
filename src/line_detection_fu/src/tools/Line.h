@@ -73,8 +73,8 @@ public:
             double t = (double) (x - start.getX()) / (double) (start.getX()-end.getX());
             double r = start.getY() + t * (start.getY() - end.getY());
 
-ROS_INFO("atX: t = %f, r = %f");
-return r;
+            ROS_INFO("atX: t = %f, r = %f", t, r);
+            return r;
     }
 
     /*
@@ -92,8 +92,8 @@ return r;
             double t = (double) (y - start.getY()) / (double) (start.getY()-end.getY());
             double r = start.getX() + t * (start.getX() - end.getX());
 
-ROS_INFO("atY: t = %f, r = %f");
-return r;
+            ROS_INFO("atY: t = %f, r = %f", t, r);
+            return r;
 
         }
         if (startValueSet) {

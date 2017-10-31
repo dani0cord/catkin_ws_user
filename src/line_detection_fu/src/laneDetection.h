@@ -338,6 +338,8 @@ public:
 
     int horizDistance(FuPoint<int> &p1, FuPoint<int> &p2);
 
+    double gradient(double, NewtonPolynomial);
+
     double gradient(double, double, double, std::vector<double>);
 
     double intersection(FuPoint<int> &, double &, double, double,
