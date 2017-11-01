@@ -3,7 +3,7 @@
 using namespace std;
 
 // save frames as images in ~/.ros/
-//#define SAVE_FRAME_IMAGES
+#define SAVE_FRAME_IMAGES
 
 // show windows with results of each step in pipeline of one frame
 //#define SHOW_EDGE_WINDOW
@@ -29,6 +29,18 @@ size_t frame = 0;
 
 const uint32_t MY_ROS_QUEUE_SIZE = 1;
 const double PI = 3.14159265;
+
+double m1 = 0;
+double m2 = 0;
+double n1 = 0;
+double n2 = 0;
+
+FuPoint<double> p1Draw = FuPoint<double>();
+FuPoint<double> p1DrawShifted = FuPoint<double>();
+FuPoint<double> p2Draw = FuPoint<double>();
+FuPoint<double> p2DrawShifted = FuPoint<double>();
+FuPoint<double> p3Draw = FuPoint<double>();
+FuPoint<double> p3DrawShifted = FuPoint<double>();
 
 cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") {
     string node_name = ros::this_node::getName();
@@ -128,7 +140,7 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
 
     defaultXLeft = Line<int>(projImageH);
     defaultXCenter = Line<int>(projImageH);
-    defaultXRight = Line<int>(projImageH);
+    defaultXRight = Line<double>(projImageH);
 
     movedPointForAngle = FuPoint<double>();
     pointForAngle = FuPoint<double>();
@@ -524,8 +536,8 @@ void cLaneDetectionFu::findLanePositions(vector<FuPoint<int>> &laneMarkings) {
                     }
 
                     if (polyDetectedRight) {
-                        defaultXRight.setStart((int) polyRight.at(projImageH));
-                        defaultXRight.setEnd((int) polyRight.at(0));
+                        defaultXRight.setStart(polyRight.at(projImageH));
+                        defaultXRight.setEnd(polyRight.at(0));
                     } else {
                         defaultXRight.setEnd((int) (polyCenter.at(0) + upperLaneWidth));
                     }
@@ -539,6 +551,12 @@ void cLaneDetectionFu::findLanePositions(vector<FuPoint<int>> &laneMarkings) {
                         double x = defaultXRight.atY(halfHeight);
                         double y = defaultXRight.atX(x + 1);
                         double m = y - halfHeight;
+
+                        m1 = 1 / mCenter;
+                        m2 = mRight;
+
+                        n1 = y - m1 * (x + 1);
+                        n2 = projImageH / 2 - m2 * polyRight.at(projImageH / 2);
 
                         ROS_INFO("       Right Poly gradient: %f, center: %f, m: %f, halfHeight: %f", mRight, mCenter, m, halfHeight);
                     }
@@ -786,6 +804,9 @@ void cLaneDetectionFu::ransac() {
     polyDetectedRight = ransacInternal(RIGHT, laneMarkingsRight, bestPolyRight,
                                        polyRight, supportersRight, prevPolyRight);
 
+    polyDetectedLeft = false;
+    polyDetectedCenter = polyDetectedCenter && !upperLaneWidthUpdated;
+
     ROS_INFO("      Ransac poly detected: left = %s, center = %s, right = %s", polyDetectedLeft ? "true" : "false",
              polyDetectedCenter ? "true" : "false", polyDetectedRight ? "true" : "false");
 }
@@ -1011,7 +1032,7 @@ void cLaneDetectionFu::generateMovedPolynomials() {
         if (!polyDetectedLeft) {
             isPolyMovedLeft = true;
             //shiftPolynomial(polyRight, movedPolyLeft, -2 * laneWidth);
-            shiftPolynomial(polyRight, movedPolyLeft, -2);
+ //           shiftPolynomial(polyRight, movedPolyLeft, -2);
         }
     } else if (polyDetectedLeft && !polyDetectedCenter) {
         isPolyMovedCenter = true;
@@ -1222,7 +1243,7 @@ void cLaneDetectionFu::pubAngle() {
  * @param x the x coordinate of the original point
  * @param y the y coordinate of the original point
  */
-/*void cLaneDetectionFu::shiftPoint(FuPoint<double> &p, double m, double offset, int x, int y) {
+void cLaneDetectionFu::shiftPoint(FuPoint<double> &p, double m, double offset, int x, int y) {
     /*
      * Depending on the sign of the gradient of the poly at the different
      * x-values and depending on which position we are, we have to add or
@@ -1233,16 +1254,19 @@ void cLaneDetectionFu::pubAngle() {
      * separately using the trigonometric ratios of right triangles and the fact
      * that arctan of some gradient equals its angle to the x-axis in degree.
      */
-    /*if (m >= 0) {
+    if (m == 0) {
+        p.setX(x - offset);
+        p.setY(y - offset);
+    } else if (m > 0) {
         p.setX(x - offset * sin(atan(-1 / m)));
         p.setY(y - offset * cos(atan(-1 / m)));
-        return;
+    } else {
+        p.setX(x + offset * sin(atan(-1 / m)));
+        p.setY(y + offset * cos(atan(-1 / m)));
     }
-    p.setX(x + offset * sin(atan(-1 / m)));
-    p.setY(y + offset * cos(atan(-1 / m)));
-}*/
+}
 
-void cLaneDetectionFu::shiftPoint(FuPoint<double> &p, double offset, int x, int y) {
+/*void cLaneDetectionFu::shiftPoint(FuPoint<double> &p, double offset, int x, int y) {
     double viewLaneWidthOffset = laneWidth - upperLaneWidth;
     double horizontalShiftLength = upperLaneWidth + viewLaneWidthOffset * (y / (double) projImageH);
 
@@ -1250,7 +1274,7 @@ void cLaneDetectionFu::shiftPoint(FuPoint<double> &p, double offset, int x, int 
     p.setX(x + offset * horizontalShiftLength);
 
     //ROS_INFO("laneWidth: %f, upperLaneWidth: %f, viewLaneWidthOffset: %f, horizontalShiftLength: %f, x: %f", laneWidth, upperLaneWidth, viewLaneWidthOffset, horizontalShiftLength, x + offset * horizontalShiftLength);
-}
+}*/
 
 /**
  * Shifts a polynomial by a given offset
@@ -1278,8 +1302,36 @@ void cLaneDetectionFu::shiftPolynomial(NewtonPolynomial &f, NewtonPolynomial &g,
 
     FuPoint<double> shiftedPoint;
     for (int i = 0; i < 3; i++) {
-        shiftPoint(shiftedPoint, offset, f.getInterpolationPointX(i), f.getInterpolationPointY(i));
+        double m = gradient(f.getInterpolationPointY(i), f);
+
+        ROS_INFO("m = %f, m2 = %f, mFinal = %f", m, m2, (m - m2));
+
+        m = m - m2;
+
+        double viewLaneWidthOffset = laneWidth - upperLaneWidth;
+        double horizontalShiftLength = upperLaneWidth + viewLaneWidthOffset * (f.getInterpolationPointY(i) / (double) projImageH);
+
+        shiftPoint(shiftedPoint, m, offset * horizontalShiftLength, f.getInterpolationPointX(i), f.getInterpolationPointY(i));
         g.addData(shiftedPoint);
+
+        ROS_INFO("Shift poly, %d, shifted point: (%f, %f)", i, shiftedPoint.getY(), shiftedPoint.getX());
+
+        if (i == 0) {
+            p1Draw.setX(f.getInterpolationPointX(i));
+            p1Draw.setY(f.getInterpolationPointY(i));
+            p1DrawShifted.setX(shiftedPoint.getX());
+            p1DrawShifted.setY(shiftedPoint.getY());
+        } else if (i == 1) {
+            p2Draw.setX(f.getInterpolationPointX(i));
+            p2Draw.setY(f.getInterpolationPointY(i));
+            p2DrawShifted.setX(shiftedPoint.getX());
+            p2DrawShifted.setY(shiftedPoint.getY());
+        } else {
+            p3Draw.setX(f.getInterpolationPointX(i));
+            p3Draw.setY(f.getInterpolationPointY(i));
+            p3DrawShifted.setX(shiftedPoint.getX());
+            p3DrawShifted.setY(shiftedPoint.getY());
+        }
     }
 }
 
@@ -1593,6 +1645,21 @@ void cLaneDetectionFu::drawGroupedLaneMarkingsWindow(Mat &img) {
         cv::line(transformedImagePaintable, p1r, p2r, cv::Scalar(255, 0, 0));
     }
 
+    if (m2 > 0) {
+        for (int y = 0; y < projImageH; y++) {
+            int x1 = (int) ((y - n1) / m1);
+            int x2 = (int) ((y - n2) / m2);
+
+            ROS_INFO("x1: %d, x2: %d", x1, x2);
+
+            cv::Point markingLoc = cv::Point(x1, y);
+            cv::circle(transformedImagePaintable, markingLoc, 1, cv::Scalar(255, 255, 0), -1);
+
+            cv::Point markingLoc2 = cv::Point(x2, y);
+            cv::circle(transformedImagePaintable, markingLoc2, 1, cv::Scalar(0, 0, 255), -1);
+        }
+    }
+
     cv::Point2d p1(projImageWHalf - (roiBottomW / 2), maxYRoi - 1);
     cv::Point2d p2(projImageWHalf + (roiBottomW / 2), maxYRoi - 1);
     cv::Point2d p3(projImageWHalf + (roiTopW / 2), minYPolyRoi);
@@ -1669,6 +1736,17 @@ void cLaneDetectionFu::drawRansacWindow(cv::Mat &img) {
     debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(0, 0, 0), movedPolyCenter, minYPolyRoi, maxYRoi, 0);
     debugPaintPolynom(transformedImagePaintableRansac, cv::Scalar(51, 153, 255), movedPolyRight, minYPolyRoi, maxYRoi, 0);
 
+    cv::Point start = cv::Point(p1Draw.getX(), p1Draw.getY());
+    cv::Point end = cv::Point(p1DrawShifted.getX(), p1DrawShifted.getY());
+    cv::line(transformedImagePaintableRansac, start, end, cv::Scalar(255, 255, 0));
+
+    start = cv::Point(p2Draw.getX(), p2Draw.getY());
+    end = cv::Point(p2DrawShifted.getX(), p2DrawShifted.getY());
+    cv::line(transformedImagePaintableRansac, start, end, cv::Scalar(255, 255, 0));
+
+    start = cv::Point(p3Draw.getX(), p3Draw.getY());
+    end = cv::Point(p3DrawShifted.getX(), p3DrawShifted.getY());
+    cv::line(transformedImagePaintableRansac, start, end, cv::Scalar(255, 255, 0));
 
 #ifdef PUBLISH_IMAGES
     pubRGBImageMsg(transformedImagePaintableRansac, imagePublisherRansac);

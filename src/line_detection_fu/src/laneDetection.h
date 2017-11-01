@@ -182,7 +182,7 @@ private:
      */
     Line<int> defaultXLeft;
     Line<int> defaultXCenter;
-    Line<int> defaultXRight;
+    Line<double> defaultXRight;
 
     /**
      * Flags to determine if a valid polynomial was detected in the last frame
@@ -305,7 +305,7 @@ public:
 
     void findLanePositions(vector<FuPoint<int>> &laneMarkings);
 
-    void shiftPoint(FuPoint<double> &p, double offset, int x, int y);
+    void shiftPoint(FuPoint<double> &p, double m, double offset, int x, int y);
 
     void shiftPolynomial(NewtonPolynomial &f, NewtonPolynomial &g, double offset);
 

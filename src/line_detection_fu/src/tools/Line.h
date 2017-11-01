@@ -70,11 +70,12 @@ public:
             ROS_INFO("Line.h atX(): vertical constant line");
             return -1;
         }
-            double t = (double) (x - start.getX()) / (double) (start.getX()-end.getX());
-            double r = start.getY() + t * (start.getY() - end.getY());
 
-            ROS_INFO("atX: t = %f, r = %f", t, r);
-            return r;
+        double t = (double) (x - start.getX()) / (double) (start.getX() - end.getX());
+        double r = start.getY() + t * (start.getY() - end.getY());
+
+        ROS_INFO("atX: t = %f, r = %f", t, r);
+        return r;
     }
 
     /*
@@ -105,7 +106,7 @@ public:
     /*
      * Returns the horizontal distance to a given FuPoint, using the FuPoints y coordinate
      */
-    T horizDistance(FuPoint<T> &p) {
+    T horizDistance(FuPoint<int> &p) {
         if (isInitialized()) {
             if (properties.isHorizontalConstant) {
                 // point on line
@@ -116,7 +117,7 @@ public:
                 return -1;
             }
 
-            ROS_INFO("Linie.h: m: %f, n: %f, x: %d, y: %d, atY: %d", m, n, p.getX(), p.getY(), atY(p.getY()));
+            //ROS_INFO("Linie.h: m: %f, n: %f, x: %d, y: %d, atY: %d", m, n, p.getX(), p.getY(), atY(p.getY()));
 
             return std::abs(atY(p.getY()) - p.getX());
         }
@@ -155,7 +156,7 @@ private:
             return;
         }
 
-        ROS_INFO("Line.h: start = (%d, %d), end = (%d, %d)", start.getX(), start.getY(), end.getX(), end.getY());
+        //ROS_INFO("Line.h: start = (%d, %d), end = (%d, %d)", start.getX(), start.getY(), end.getX(), end.getY());
         properties.isVerticalConstant = 0;
         properties.isHorizontalConstant = 0;
 
