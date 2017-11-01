@@ -3,17 +3,17 @@
 using namespace std;
 
 // save frames as images in ~/.ros/
-#define SAVE_FRAME_IMAGES
+//#define SAVE_FRAME_IMAGES
 
 // show windows with results of each step in pipeline of one frame
-#define SHOW_EDGE_WINDOW
-#define SHOW_LANE_MARKINGS_WINDOW
+//#define SHOW_EDGE_WINDOW
+//#define SHOW_LANE_MARKINGS_WINDOW
 #define SHOW_GROUPED_LANE_MARKINGS_WINDOW
 #define SHOW_RANSAC_WINDOW
 #define SHOW_ANGLE_WINDOW
 
 // publish ransac and grouped lane frames to show it in rviz
-#define PUBLISH_IMAGES
+//#define PUBLISH_IMAGES
 
 // try kernel width 5 for now
 const static int kernel1DWidth = 5;
@@ -1031,6 +1031,86 @@ void cLaneDetectionFu::generateMovedPolynomials() {
   * car is published.
   */
 void cLaneDetectionFu::pubAngle() {
+    double dstMiddleCenter;
+    double dstMiddleRight;
+    double diff;
+    double oppositeLeg;
+    int y = projImageH - angleAdjacentLeg;
+
+    /*
+     * check if there were polynomials detected
+     * if so, calculate the distances from the middle of the image to the center and right polynomials
+     * else check if there were default lines detected
+     * if so, calculate the distances from the middle of the image to the center and right polynomials
+     * else abort
+     */
+    if ((polyDetectedCenter || isPolyMovedCenter) && (polyDetectedRight || isPolyMovedRight)) {
+        gradientForAngle = polyDetectedRight ? gradient(y, polyRight.getInterpolationPointY(0), polyRight.getInterpolationPointY(1), polyRight.getCoefficients())
+                                             : gradient(y, movedPolyRight.getInterpolationPointY(0), movedPolyRight.getInterpolationPointY(1), movedPolyRight.getCoefficients());
+
+        dstMiddleCenter = abs(polyDetectedCenter ? projImageWHalf - polyCenter.at(y)
+                                                 : projImageWHalf - movedPolyCenter.at(y));
+        dstMiddleRight = abs(polyDetectedRight ? projImageWHalf - polyRight.at(y)
+                                               : projImageWHalf - movedPolyRight.at(y));
+    } else if (defaultXCenter.isInitialized() && defaultXRight.isInitialized()){
+        dstMiddleCenter = abs(projImageWHalf - defaultXRight.atY(y));
+        dstMiddleRight = abs(projImageWHalf - defaultXCenter.atY(y));
+    } else {
+        return;
+    }
+
+    /*
+     * calculate the drift
+     */
+    diff = abs(dstMiddleRight - dstMiddleCenter);
+    // drifting towards the left
+    if (dstMiddleCenter < dstMiddleRight) {
+        oppositeLeg = diff;
+    }
+    // drifting towards the right
+    if (dstMiddleCenter > dstMiddleRight) {
+        oppositeLeg = -diff;
+    }
+
+    /*
+     * calculate steering angle
+     */
+    double adjacentLeg = y;
+    double result = atan(oppositeLeg / adjacentLeg) * 180 / PI;
+
+    /*
+     * debug points
+     *
+     * Note: the oppositeLeg is calculated at the origin, remember to offset it properly by the car's position relative to the image when painting in the debug window
+     */
+    movedPointForAngle.setX(projImageWHalf + oppositeLeg);
+    movedPointForAngle.setY(y);
+    pointForAngle.setX(projImageWHalf);
+    pointForAngle.setY(y);
+
+    /*
+     * filter too rash steering angles / jitter in polynomial data
+     */
+    ROS_ERROR("%f %f %d", result, lastAngle, maxAngleDiff);
+    if (abs(result - lastAngle) > maxAngleDiff) {
+        if (result - lastAngle > 0)
+            result = lastAngle + maxAngleDiff;
+        else
+            result = lastAngle - maxAngleDiff;
+    }
+
+    lastAngle = result;
+
+    std_msgs::Float32 angleMsg;
+
+    angleMsg.data = result;
+
+    publishAngle.publish(angleMsg);
+
+}
+
+#if 0
+void cLaneDetectionFu::pubAngle() {
     /*
      * we didn't detect anything
      */
@@ -1043,8 +1123,6 @@ void cLaneDetectionFu::pubAngle() {
      */
     int y = projImageH - angleAdjacentLeg;
     double xRightLane;
-
-
     if (polyDetectedRight) {
         xRightLane = polyRight.at(y);
         gradientForAngle = gradient(y, polyRight.getInterpolationPointY(0), polyRight.getInterpolationPointY(1), polyRight.getCoefficients());
@@ -1054,20 +1132,24 @@ void cLaneDetectionFu::pubAngle() {
     }
 
     /*
-     * find the mid of the lane, if no polynomials were detected use previous values
+     * find the mid of the lane
      */
+    double xRight = polyDetectedRight ? polyRight.at(y) : polyCenter.at(y);
+    double xCenter = polyCenter.at(y);
+
+    // if no polynomials were detected use previous values
     if (!polyDetectedCenter || !polyDetectedRight || laneMiddle <= 0) {
         //double offset = -1 * laneWidth / 2;
         shiftPoint(movedPointForAngle, -0.5f, (int) xRightLane, y);
+    // if the center and right polynomial were detected calculate and store lane mid
     } else if (polyDetectedCenter && polyDetectedRight) {
-        double xRight = polyRight.at(y);
-        double xCenter = polyCenter.at(y);
         laneMiddle = (xRight - xCenter) / 2;
 
+/* TODO: in the first case we shift movedPointForAngle, here we only set new values - why? */
         movedPointForAngle.setX(xCenter + laneMiddle);
         movedPointForAngle.setY(y);
+    // otherwise use stored value
     } else {
-        double xRight = polyDetectedRight ? polyRight.at(y) : polyCenter.at(y);
         movedPointForAngle.setX(polyDetectedRight ? xRight - laneMiddle : xRight + laneMiddle);
         movedPointForAngle.setY(y);
     }
@@ -1075,6 +1157,9 @@ void cLaneDetectionFu::pubAngle() {
     pointForAngle.setX(xRightLane);
     pointForAngle.setY(y);
 
+    /*
+     * 
+     */
     int centerXMovedCenter = defaultXCenter.atY(movedPointForAngle.getY());
     int centerXMovedRight = defaultXRight.atX(movedPointForAngle.getY());
 
@@ -1107,7 +1192,7 @@ void cLaneDetectionFu::pubAngle() {
 
     publishAngle.publish(angleMsg);
 }
-
+#endif
 
 
 /*
@@ -1590,7 +1675,8 @@ void cLaneDetectionFu::drawAngleWindow(Mat &img) {
     cvtColor(transformedImagePaintableLaneModel, transformedImagePaintableLaneModel, CV_GRAY2BGR);
 
     if (polyDetectedRight || isPolyMovedRight) {
-        double carPositionX = defaultXCenter.getEnd().getX() + (defaultXRight.getEnd().getX() - defaultXCenter.getEnd().getX()) / 2;
+        //double carPositionX = defaultXCenter.getEnd().getX() + (defaultXRight.getEnd().getX() - defaultXCenter.getEnd().getX()) / 2;
+        double carPositionX = pointForAngle.getX();
 
         cv::Point pointLoc = cv::Point(carPositionX, projImageH);
         cv::circle(transformedImagePaintableLaneModel, pointLoc, 2, cv::Scalar(0, 0, 255), -1);
@@ -1605,13 +1691,15 @@ void cLaneDetectionFu::drawAngleWindow(Mat &img) {
         cv::Point targetPoint = cv::Point(movedPointForAngle.getX(), movedPointForAngle.getY());
         cv::circle(transformedImagePaintableLaneModel, targetPoint, 2, cv::Scalar(0, 0, 255), -1);
 
+        // TODO: what was this for?
         double m = -gradientForAngle;
 
-        double n = pointForAngle.getY() - m * pointForAngle.getX();
+        double n = movedPointForAngle.getY() - m * movedPointForAngle.getX();
         double x = 10;
         double y = m * x + n;
+        //
 
-        cv::Point endNormalPoint = cv::Point(x, pointForAngle.getY());
+        cv::Point endNormalPoint = cv::Point(movedPointForAngle.getX(), movedPointForAngle.getY());
         cv::line(transformedImagePaintableLaneModel, startNormalPoint, endNormalPoint, cv::Scalar(0, 0, 0));
 
     } else {
