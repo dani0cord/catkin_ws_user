@@ -530,6 +530,19 @@ void cLaneDetectionFu::findLanePositions(vector<FuPoint<int>> &laneMarkings) {
                         defaultXRight.setEnd((int) (polyCenter.at(0) + upperLaneWidth));
                     }
 
+                    // TODO: Only for testing
+                    if (polyDetectedRight) {
+                        double mRight = gradient(projImageH / 2, polyRight);
+                        double mCenter = gradient(projImageH / 2, polyCenter);
+
+                        double halfHeight = (double) projImageH / 2;
+                        double x = defaultXRight.atY(halfHeight);
+                        double y = defaultXRight.atX(x + 1);
+                        double m = y - halfHeight;
+
+                        ROS_INFO("       Right Poly gradient: %f, center: %f, m: %f, halfHeight: %f", mRight, mCenter, m, halfHeight);
+                    }
+
                     ROS_INFO("       findLane: end set to %d, %d, %d", defaultXLeft.atX(0), defaultXCenter.atX(0), defaultXRight.atX(0));
 
                     return;
@@ -1407,6 +1420,10 @@ double cLaneDetectionFu::gradient(double x, double interpolationPoint0Y, double 
     return (2 * coeffs[2] * x + coeffs[1])
            - (coeffs[2] * interpolationPoint1Y)
            - (coeffs[2] * interpolationPoint0Y);
+}
+
+double cLaneDetectionFu::gradient(double x, NewtonPolynomial poly) {
+    return gradient(x, poly.getInterpolationPointY(0), poly.getInterpolationPointY(1), poly.getCoefficients());
 }
 
 /**
