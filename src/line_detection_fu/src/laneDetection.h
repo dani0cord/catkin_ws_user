@@ -258,6 +258,8 @@ private:
     double laneWidth = 45.f;
     double upperLaneWidth = 13.f;
     bool upperLaneWidthUpdated = false;
+    bool laneWidthFinal = false;
+    bool upperLaneWidthFinal = false;
     double laneMiddle = 0.f;
 
 
@@ -304,6 +306,10 @@ public:
     void buildLaneMarkingsLists(const std::vector<FuPoint<int>> &laneMarkings);
 
     void findLanePositions(vector<FuPoint<int>> &laneMarkings);
+
+    void improveLaneWidth();
+
+    bool isPartOfLine(vector<FuPoint<int>> &laneMarkings, FuPoint<int> p);
 
     void shiftPoint(FuPoint<double> &p, double m, double offset, int x, int y);
 

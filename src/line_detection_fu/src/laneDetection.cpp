@@ -252,6 +252,7 @@ void cLaneDetectionFu::ProcessInput(const sensor_msgs::Image::ConstPtr &msg) {
 
     // try to fit a polynomial for each lane
     ransac();
+    improveLaneWidth();
     // generate new polynomials based on polynomials found in ransac for lanes without ransac polynomial
     generateMovedPolynomials();
 
@@ -514,9 +515,13 @@ vector<FuPoint<int>> cLaneDetectionFu::extractLaneMarkings(const vector<vector<E
  * Start position of left lane is calculated after start positions of center and right lanes are found.
  */
 void cLaneDetectionFu::findLanePositions(vector<FuPoint<int>> &laneMarkings) {
+    if (upperLaneWidthUpdated) {
+        return;
+    }
+
     // defaultXLeft is calculated after center and right lane position is found
     if (laneWidth > 0 && defaultXLeft.isStartValueSet()) {
-        if (!upperLaneWidthUpdated && polyDetectedCenter && (polyDetectedRight || polyDetectedLeft)) {
+        if (polyDetectedCenter && (polyDetectedRight || polyDetectedLeft)) {
             for (int y = 0; y < projImageH / 3; y++) {
                 double x = polyDetectedRight ? polyRight.at(y) : polyLeft.at(y);
                 double centerX = polyCenter.at(y);
@@ -524,6 +529,10 @@ void cLaneDetectionFu::findLanePositions(vector<FuPoint<int>> &laneMarkings) {
                 if (x > 0 && x < projImageW && centerX > 0 && centerX < projImageW) {
                     upperLaneWidthUpdated = true;
                     upperLaneWidth = polyDetectedRight ? x - centerX : centerX - x;
+
+                    double xBottom = polyDetectedRight ? polyRight.at(projImageH) : polyLeft.at(projImageH);
+                    double centerXBottom = polyCenter.at(projImageH);
+                    laneWidth = polyDetectedRight ? xBottom - centerXBottom : centerXBottom - xBottom;
 
                     defaultXCenter.setStart((int) polyCenter.at(projImageH));
                     defaultXCenter.setEnd((int) polyCenter.at(0));
@@ -652,8 +661,8 @@ void cLaneDetectionFu::findLanePositions(vector<FuPoint<int>> &laneMarkings) {
     }
 
     if (defaultXCenter.isStartValueSet() && defaultXRight.isStartValueSet()) {
-        int bottomRightLaneX = defaultXRight.atY(projImageH);
-        int bottomCenterLaneX = defaultXCenter.atY(projImageH);
+        double bottomRightLaneX = defaultXRight.atY(projImageH);
+        double bottomCenterLaneX = defaultXCenter.atY(projImageH);
 
         if (bottomRightLaneX != -1 && bottomCenterLaneX != -1) {
             laneWidth = (bottomRightLaneX - bottomCenterLaneX);
@@ -804,8 +813,8 @@ void cLaneDetectionFu::ransac() {
     polyDetectedRight = ransacInternal(RIGHT, laneMarkingsRight, bestPolyRight,
                                        polyRight, supportersRight, prevPolyRight);
 
-    polyDetectedLeft = false;
-    polyDetectedCenter = polyDetectedCenter && !upperLaneWidthUpdated;
+    //polyDetectedLeft = false;
+    //polyDetectedCenter = polyDetectedCenter && !upperLaneWidthUpdated;
 
     ROS_INFO("      Ransac poly detected: left = %s, center = %s, right = %s", polyDetectedLeft ? "true" : "false",
              polyDetectedCenter ? "true" : "false", polyDetectedRight ? "true" : "false");
@@ -1004,6 +1013,76 @@ bool cLaneDetectionFu::ransacInternal(ePosition position,
     return true;
 }
 
+void cLaneDetectionFu::improveLaneWidth() {
+    if (!upperLaneWidthUpdated || !polyDetectedCenter) {
+        return;
+    }
+
+    if (!laneWidthFinal && isPartOfLine(laneMarkingsCenter, laneMarkingsCenter.at(0))) {
+        int bottom = projImageH - 3;
+        int centerX = laneMarkingsRight.at(0).getY();
+
+        if (polyDetectedRight) {
+            if (centerX > bottom && laneMarkingsCenter.at(0).getY() > bottom) {
+                if (isPartOfLine(laneMarkingsRight, laneMarkingsRight.at(0))) {
+                    laneWidthFinal = true;
+                    laneWidth = polyRight.at(projImageH) - polyCenter.at(projImageH);
+
+                    ROS_INFO("Lane width now final: %f", laneWidth);
+                }
+            }
+        }
+        if (polyDetectedLeft) {
+            if (centerX > bottom && laneMarkingsCenter.at(0).getY() > bottom) {
+                if (isPartOfLine(laneMarkingsLeft, laneMarkingsLeft.at(0))) {
+                    laneWidthFinal = true;
+                    laneWidth = polyLeft.at(projImageH) - polyCenter.at(projImageH);
+
+                    ROS_INFO("Lane width now final: %f", laneWidth);
+                }
+            }
+        }
+    }
+
+    if (!upperLaneWidthFinal && isPartOfLine(laneMarkingsCenter, laneMarkingsCenter.at(laneMarkingsCenter.size() - 1))) {
+        int top = 3;
+        int centerX = laneMarkingsCenter.at(laneMarkingsCenter.size() - 1).getY();
+
+        if (polyDetectedRight) {
+            int rightX = laneMarkingsRight.at(laneMarkingsRight.size() - 1).getY();
+            if (rightX > top && centerX > top) {
+                if (isPartOfLine(laneMarkingsRight, laneMarkingsRight.at(laneMarkingsRight.size() - 1))) {
+                    upperLaneWidthFinal = true;
+                    laneWidth = polyRight.at(projImageH) - polyCenter.at(projImageH);
+
+                    ROS_INFO("Upper lane width now final: %f", upperLaneWidth);
+                }
+            }
+        }
+        if (polyDetectedLeft) {
+            int leftX = laneMarkingsLeft.at(laneMarkingsLeft.size() - 1).getY();
+            if (leftX > top && centerX > top) {
+                if (isPartOfLine(laneMarkingsLeft, laneMarkingsRight.at(laneMarkingsLeft.size() - 1))) {
+                    upperLaneWidthFinal = true;
+                    laneWidth = polyLeft.at(projImageH) - polyCenter.at(projImageH);
+
+                    ROS_INFO("Upper lane width now final: %f", upperLaneWidth);
+                }
+            }
+        }
+    }
+}
+
+bool cLaneDetectionFu::isPartOfLine(vector<FuPoint<int>> &laneMarkings, FuPoint<int> p) {
+    int supporter = 0;
+
+    for (FuPoint<int> lineMarking : laneMarkings) {
+        if (isInRange(lineMarking, p));
+    }
+
+    return supporter > 3;
+}
+
 /**
  * Shifts detected lane polynomials to the position of the undected lane polyominals,
  * so they can be used in the next cycle to group the lane markings.
@@ -1032,7 +1111,7 @@ void cLaneDetectionFu::generateMovedPolynomials() {
         if (!polyDetectedLeft) {
             isPolyMovedLeft = true;
             //shiftPolynomial(polyRight, movedPolyLeft, -2 * laneWidth);
- //           shiftPolynomial(polyRight, movedPolyLeft, -2);
+            shiftPolynomial(polyRight, movedPolyLeft, -2);
         }
     } else if (polyDetectedLeft && !polyDetectedCenter) {
         isPolyMovedCenter = true;
@@ -1302,16 +1381,24 @@ void cLaneDetectionFu::shiftPolynomial(NewtonPolynomial &f, NewtonPolynomial &g,
 
     FuPoint<double> shiftedPoint;
     for (int i = 0; i < 3; i++) {
-        double m = gradient(f.getInterpolationPointY(i), f);
+        double y = f.getInterpolationPointY(i);
+        double m = gradient(y, f);
 
         ROS_INFO("m = %f, m2 = %f, mFinal = %f", m, m2, (m - m2));
 
         m = m - m2;
 
         double viewLaneWidthOffset = laneWidth - upperLaneWidth;
-        double horizontalShiftLength = upperLaneWidth + viewLaneWidthOffset * (f.getInterpolationPointY(i) / (double) projImageH);
+        double horizontalShiftLength = upperLaneWidth + viewLaneWidthOffset * (y / (double) projImageH);
 
-        shiftPoint(shiftedPoint, m, offset * horizontalShiftLength, f.getInterpolationPointX(i), f.getInterpolationPointY(i));
+        shiftPoint(shiftedPoint, m, offset * horizontalShiftLength, f.getInterpolationPointX(i), y);
+
+        double heightDiff = abs(y - shiftedPoint.getY());
+        if (heightDiff > 4) {
+            double yLaneWidth = min(y, shiftedPoint.getY()) + heightDiff / 2;
+            double horizontalShiftLength = upperLaneWidth + viewLaneWidthOffset * (yLaneWidth / (double) projImageH);
+            shiftPoint(shiftedPoint, m, offset * horizontalShiftLength, f.getInterpolationPointX(i), y);
+        }
         g.addData(shiftedPoint);
 
         ROS_INFO("Shift poly, %d, shifted point: (%f, %f)", i, shiftedPoint.getY(), shiftedPoint.getX());
@@ -1747,6 +1834,16 @@ void cLaneDetectionFu::drawRansacWindow(cv::Mat &img) {
     start = cv::Point(p3Draw.getX(), p3Draw.getY());
     end = cv::Point(p3DrawShifted.getX(), p3DrawShifted.getY());
     cv::line(transformedImagePaintableRansac, start, end, cv::Scalar(255, 255, 0));
+
+    // laneWidth
+    start = cv::Point(defaultXCenter.atY(projImageH - 5), projImageH - 5);
+    end = cv::Point(defaultXCenter.atY(projImageH - 5) + laneWidth, projImageH - 5);
+    cv::line(transformedImagePaintableRansac, start, end, cv::Scalar(255, 0, 255));
+
+    // upperLaneWidth
+    start = cv::Point(defaultXCenter.atY(5), 5);
+    end = cv::Point(defaultXCenter.atY(5) + upperLaneWidth, 5);
+    cv::line(transformedImagePaintableRansac, start, end, cv::Scalar(255, 0, 255));
 
 #ifdef PUBLISH_IMAGES
     pubRGBImageMsg(transformedImagePaintableRansac, imagePublisherRansac);
