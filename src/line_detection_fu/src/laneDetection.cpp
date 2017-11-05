@@ -88,7 +88,7 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
 
     priv_nh_.param<int>(node_name + "/polyY1", polyY1, 20);
     priv_nh_.param<int>(node_name + "/polyY2", polyY2, 50);
-    priv_nh_.param<int>(node_name + "/polyY3", polyY3, 70);
+    priv_nh_.param<int>(node_name + "/polyY3", polyY3, 80);
 
     double f_u;
     double f_v;
@@ -875,11 +875,11 @@ bool cLaneDetectionFu::ransacInternal(ePosition position,
         }
     }
 
-    polyY3 = laneMarkings[0].getY();
-    polyY1 = laneMarkings[laneMarkings.size() - 1].getY();
-    polyY2 = polyY1 + ((polyY3 - polyY1) / 2);
+//    polyY3 = laneMarkings[0].getY();
+//    polyY1 = laneMarkings[laneMarkings.size() - 1].getY();
+//    polyY2 = polyY1 + ((polyY3 - polyY1) / 2);
 
-    ROS_INFO("      Ransac: polyY1 - 3: %d, %d, %d", polyY1, polyY2, polyY3);
+//    ROS_INFO("      Ransac: polyY1 - 3: %d, %d, %d", polyY1, polyY2, polyY3);
 
     //what is this for?
     if (position == CENTER) {
@@ -1084,20 +1084,20 @@ bool cLaneDetectionFu::isPartOfLine(bool invert, vector<FuPoint<int>> &laneMarki
 
     if (invert) {
         for (int i = laneMarkings.size() - 1; i >= 0; i--) {
-            if (!isInRange(laneMarkings.at(i), *currentPoint))
+            if (!isInRange(10, laneMarkings.at(i), *currentPoint))//TODO: same variable as in isInRangeAndImage
                 break;
             currentPoint = &laneMarkings.at(i);
             supporter++;
         }
     } else {
         for (int i = 0; i < laneMarkings.size(); i++) {
-            if (!isInRange(laneMarkings.at(i), *currentPoint))
+            if (!isInRange(10, laneMarkings.at(i), *currentPoint))//TODO: same variable as in isInRangeAndImage
                 break;
             currentPoint = &laneMarkings.at(i);
             supporter++;
         }
     }
-ROS_INFO("supporter: %d invert: %d", supporter, invert);
+    ROS_INFO("supporter: %d invert: %d", supporter, invert);
     return supporter > 2;
 }
 
@@ -1124,33 +1124,33 @@ void cLaneDetectionFu::generateMovedPolynomials() {
     if (polyDetectedRight && !polyDetectedCenter) {
         isPolyMovedCenter = true;
         //shiftPolynomial(polyRight, movedPolyCenter, -laneWidth);
-        shiftPolynomial(polyRight, movedPolyCenter, -.8f);
+        shiftPolynomial(polyRight, movedPolyCenter, -1);
 
         if (!polyDetectedLeft) {
             isPolyMovedLeft = true;
             //shiftPolynomial(polyRight, movedPolyLeft, -2 * laneWidth);
-            shiftPolynomial(polyRight, movedPolyLeft, -1.4f);
+            shiftPolynomial(polyRight, movedPolyLeft, -2);
         }
     } else if (polyDetectedLeft && !polyDetectedCenter) {
         isPolyMovedCenter = true;
         //shiftPolynomial(polyLeft, movedPolyCenter, laneWidth);
-        shiftPolynomial(polyLeft, movedPolyCenter, 0.6f);
+        shiftPolynomial(polyLeft, movedPolyCenter, 1);
 
         if (!polyDetectedRight) {
             isPolyMovedRight = true;
             //shiftPolynomial(polyLeft, movedPolyRight, 2 * laneWidth);
-            shiftPolynomial(polyLeft, movedPolyRight, 1.4f);
+            shiftPolynomial(polyLeft, movedPolyRight, 2);
         }
     } else if (polyDetectedCenter) {
         if (!polyDetectedLeft) {
             isPolyMovedLeft = true;
             //shiftPolynomial(polyCenter, movedPolyLeft, -laneWidth);
-            shiftPolynomial(polyCenter, movedPolyLeft, -0.6);
+            shiftPolynomial(polyCenter, movedPolyLeft, -1);
         }
         if (!polyDetectedRight) {
             isPolyMovedRight = true;
             //shiftPolynomial(polyCenter, movedPolyRight, laneWidth);
-            shiftPolynomial(polyCenter, movedPolyRight, .8f);
+            shiftPolynomial(polyCenter, movedPolyRight, 1);
         }
     }
 }
@@ -1457,14 +1457,15 @@ bool cLaneDetectionFu::isInRangeAndImage(FuPoint<int> &lanePoint, FuPoint<int> &
         return false;
     }
 
-    return isInRange(lanePoint, p);
+    // TODO: add variable for distance = 10
+    return isInRange(10, lanePoint, p);
 }
 
-bool cLaneDetectionFu::isInRange(FuPoint<int> &lanePoint, FuPoint<int> &p) {
+bool cLaneDetectionFu::isInRange(int distance, FuPoint<int> &lanePoint, FuPoint<int> &p) {
     double distanceX = abs(p.getX() - lanePoint.getX());
     double distanceY = abs(p.getY() - lanePoint.getY());
 
-    return ((distanceX < interestDistancePoly) && (distanceY < interestDistancePoly));
+    return ((distanceX < distance) && (distanceY < distance));
 }
 
 
@@ -1536,7 +1537,7 @@ bool cLaneDetectionFu::isInDefaultRoi(ePosition position, FuPoint<int> &p) {
 bool cLaneDetectionFu::isInPolyRoi(NewtonPolynomial &poly, FuPoint<int> &p) {
     if (p.getY() < minYPolyRoi || p.getY() > maxYRoi) {
         return false;
-    } else if (horizDistanceToPolynomial(poly, p) <= interestDistancePoly) {
+    } else if (horizDistanceToPolynomial(poly, p) <= 10) { //TODO: same variable as in isInRangeAndImage
         return true;
     } else {
         return false;
@@ -1600,27 +1601,28 @@ bool cLaneDetectionFu::polyValid(ePosition position, NewtonPolynomial poly, Newt
         if (polyDetectedRight) {
             return isSimilar(poly, polyRight);
         }
-        if (isPolyMovedRight) {
-            return isSimilar(poly, movedPolyRight);
-        }
+//        if (isPolyMovedRight) {
+//            return isSimilar(poly, movedPolyRight);
+//        }
     }
     if (position == CENTER) {
         if (polyDetectedCenter) {
             return isSimilar(poly, polyCenter);
         }
-        if (isPolyMovedCenter) {
-            return isSimilar(poly, movedPolyCenter);
-        }
+//        if (isPolyMovedCenter) {
+//            return isSimilar(poly, movedPolyCenter);
+//        }
     }
     if (position == LEFT) {
         if (polyDetectedLeft) {
             return isSimilar(poly, polyLeft);
         }
-        if (isPolyMovedLeft) {
-            return isSimilar(poly, movedPolyLeft);
-        }
+//        if (isPolyMovedLeft) {
+//            return isSimilar(poly, movedPolyLeft);
+//        }
     }
 
+    // no previous poly available
     return true;
 }
 
@@ -1649,15 +1651,21 @@ bool cLaneDetectionFu::isSimilar(const NewtonPolynomial &poly1, const NewtonPoly
         return false;
     }*/
 
-    if (largeDistance(poly1, poly2, polyY1)) {
+    double m1 = gradient(polyY1, poly1);
+    double m2 = gradient(polyY1, poly2);
+    if (largeDistance(poly1, poly2, polyY1) || !gradientsSimilar(m1, m2)) {
         return false;
     }
 
-    if (largeDistance(poly1, poly2, polyY2)) {
+    m1 = gradient(polyY2, poly1);
+    m2 = gradient(polyY2, poly2);
+    if (largeDistance(poly1, poly2, polyY2) || !gradientsSimilar(m1, m2)) {
         return false;
     }
 
-    if (largeDistance(poly1, poly2, polyY3)) {
+    m1 = gradient(polyY3, poly1);
+    m2 = gradient(polyY3, poly2);
+    if (largeDistance(poly1, poly2, polyY3) || !gradientsSimilar(m1, m2)) {
         return false;
     }
 
@@ -1668,7 +1676,7 @@ bool cLaneDetectionFu::largeDistance(const NewtonPolynomial &poly1, const Newton
     FuPoint<int> p1 = FuPoint<int>((int) poly1.at(y), y);
     FuPoint<int> p1Changed = FuPoint<int>(y, (int) poly1.at(y));
 
-    double m = gradient(y, poly1.getInterpolationPointY(0), poly1.getInterpolationPointY(1), poly1.getCoefficients());
+    double m = gradient(y, poly1);
     //m = -1 / m;
 
     double yIntersection = intersection(p1Changed, m, poly2.getInterpolationPointY(0), poly2.getInterpolationPointY(1), poly2.getCoefficients());
@@ -1682,7 +1690,7 @@ bool cLaneDetectionFu::largeDistance(const NewtonPolynomial &poly1, const Newton
     ROS_INFO("           p1: (%d, %d), p2: (%d, %d), distance: (%d, %d), gradient: %f", p1.getX(), p1.getY(), p2.getX(), p2.getY(), distanceX, distanceY, m);
 
 
-    return !isInRange(p1, p2);
+    return !isInRange(interestDistancePoly, p1, p2);
 }
 
 /*
@@ -2166,7 +2174,7 @@ bool cLaneDetectionFu::gradientsSimilar(double &m1, double &m2) {
     double a1 = atan(m1) * 180 / PI;
     double a2 = atan(m2) * 180 / PI;
 
-    return (abs(a1 - a2) < 10);
+    return (abs(a1 - a2) < 5);
 }
 
 /**
