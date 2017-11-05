@@ -1014,6 +1014,8 @@ bool cLaneDetectionFu::ransacInternal(ePosition position,
 }
 
 void cLaneDetectionFu::improveLaneWidth() {
+    int range = 10;
+
     if (!upperLaneWidthUpdated || !polyDetectedCenter) {
         return;
     }
@@ -1023,14 +1025,14 @@ void cLaneDetectionFu::improveLaneWidth() {
 
     int centerX;
     if (!laneWidthFinal) {
-        int bottom = projImageH - 5;
+        int bottom = projImageH - range;
         centerX = laneMarkingsCenter.at(0).getY();
 
         if (centerX > bottom && isPartOfLine(false, laneMarkingsCenter, laneMarkingsCenter.at(0))) {
             if (polyDetectedRight && !laneMarkingsRight.empty() && laneMarkingsRight.at(0).getY() > bottom) {
                 if (isPartOfLine(false, laneMarkingsRight, laneMarkingsRight.at(0))) {
                     laneWidthFinal = true;
-                    laneWidth = polyRight.at(projImageH) - polyCenter.at(projImageH);
+                    laneWidth = polyRight.at(projImageH - 1) - polyCenter.at(projImageH - 1);
 
                     ROS_INFO("Lane width now final: %f", laneWidth);
                 }
@@ -1038,7 +1040,7 @@ void cLaneDetectionFu::improveLaneWidth() {
             if (polyDetectedLeft && !laneMarkingsLeft.empty() && laneMarkingsLeft.at(0).getY() > bottom) {
                 if (isPartOfLine(false, laneMarkingsLeft, laneMarkingsLeft.at(0))) {
                     laneWidthFinal = true;
-                    laneWidth = polyCenter.at(projImageH) - polyLeft.at(projImageH);
+                    laneWidth = polyCenter.at(projImageH - 1) - polyLeft.at(projImageH - 1);
 
                     ROS_INFO("Lane width now final: %f", laneWidth);
                 }
@@ -1047,12 +1049,12 @@ void cLaneDetectionFu::improveLaneWidth() {
     }
 
     if (!upperLaneWidthFinal) {
-        int top = 5;
+        int top = range;
         centerX = laneMarkingsCenter.at(laneMarkingsCenter.size() - 1).getY();
         if (centerX < top && isPartOfLine(true, laneMarkingsCenter, laneMarkingsCenter.at(laneMarkingsCenter.size() - 1))) {
             if (polyDetectedRight && !laneMarkingsRight.empty() && laneMarkingsRight.at(laneMarkingsRight.size() - 1).getY() < top) {
                 int rightX = laneMarkingsRight.at(laneMarkingsRight.size() - 1).getY();
-                if (rightX > top && centerX > top) {
+                if (rightX < top && centerX < top) {
                     if (isPartOfLine(true, laneMarkingsRight, laneMarkingsRight.at(laneMarkingsRight.size() - 1))) {
                         upperLaneWidthFinal = true;
                         upperLaneWidth = polyRight.at(0) - polyCenter.at(0);
@@ -1063,7 +1065,7 @@ void cLaneDetectionFu::improveLaneWidth() {
             }
             if (polyDetectedLeft && !laneMarkingsLeft.empty() && laneMarkingsLeft.at(laneMarkingsLeft.size() - 1).getY() < top) {
                 int leftX = laneMarkingsLeft.at(laneMarkingsLeft.size() - 1).getY();
-                if (leftX > top && centerX > top) {
+                if (leftX < top && centerX < top) {
                     if (isPartOfLine(true, laneMarkingsLeft, laneMarkingsLeft.at(laneMarkingsLeft.size() - 1))) {
                         upperLaneWidthFinal = true;
                         upperLaneWidth = polyCenter.at(0) - polyLeft.at(0);
@@ -1096,7 +1098,7 @@ bool cLaneDetectionFu::isPartOfLine(bool invert, vector<FuPoint<int>> &laneMarki
         }
     }
 ROS_INFO("supporter: %d invert: %d", supporter, invert);
-    return supporter > 3;
+    return supporter > 2;
 }
 
 /**
