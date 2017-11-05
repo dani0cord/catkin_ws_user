@@ -309,7 +309,7 @@ public:
 
     void improveLaneWidth();
 
-    bool isPartOfLine(vector<FuPoint<int>> &laneMarkings, FuPoint<int> p);
+    bool isPartOfLine(bool invert, std::vector<FuPoint<int>> &laneMarkings, FuPoint<int> &p);
 
     void shiftPoint(FuPoint<double> &p, double m, double offset, int x, int y);
 
