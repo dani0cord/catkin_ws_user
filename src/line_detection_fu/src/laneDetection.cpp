@@ -192,6 +192,11 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
         system("exec rm -r ./polyRange/*");
     else
         mkdir("polyRange", S_IRWXU);
+
+    if (!stat("angle", &st))
+        system("exec rm -r ./angle/*");
+    else
+        mkdir("angle", S_IRWXU);
 #endif
 }
 
@@ -895,6 +900,36 @@ bool cLaneDetectionFu::ransacInternal(ePosition position,
     // save the polynomial from the previous picture
     prevPoly = poly;
 
+
+    NewtonPolynomial *refPoly = nullptr;
+    if (prevPoly.getDegree() != -1) {
+        refPoly = &prevPoly;
+    }
+    if (position == RIGHT) {
+        if (polyDetectedRight) {
+            refPoly = &polyRight;
+        } else if (isPolyMovedRight) {
+            refPoly = &movedPolyRight;
+        }
+    }
+    if (position == CENTER) {
+        if (polyDetectedCenter) {
+            refPoly = &polyCenter;
+        } else if (isPolyMovedCenter) {
+            refPoly = &movedPolyCenter;
+        }
+    }
+    if (position == LEFT) {
+        if (polyDetectedLeft) {
+            refPoly = &polyLeft;
+        } else if (isPolyMovedLeft) {
+            refPoly = &movedPolyLeft;
+        }
+    }
+
+    double bestDistance = -1;
+    double bestGradientsDiff = -1;
+
     for (int i = 0; i < iterationsRansac; i++) {
 
         // randomly select 3 different lane marking points from bottom, mid and
@@ -923,12 +958,33 @@ bool cLaneDetectionFu::ransacInternal(ePosition position,
         poly.addData(p3X, p3Y);
 
         // check if this polynomial is not useful
-        if (!polyValid(position, poly, prevPoly)) {
-            ROS_INFO("      Ransac: poly is invalid");
+//        if (!polyValid(position, poly, prevPoly)) {
+//            ROS_INFO("      Ransac: poly is invalid");
+//
+//            poly.clear();
+//            continue;
+//        }
 
-            poly.clear();
-            continue;
+        if (refPoly != nullptr) {
+            double distance = getDistance(poly, *refPoly);
+            double gradientsDiff = getGradientsDiff(poly, *refPoly);
+
+            if (bestDistance == -1 && bestGradientsDiff == -1) {
+                bestDistance = distance;
+                bestGradientsDiff = gradientsDiff;
+            } else {
+                if (distance < bestDistance && gradientsDiff < bestGradientsDiff) {
+                    bestDistance = distance;
+                    bestGradientsDiff = gradientsDiff;
+                } else {
+                    ROS_INFO("      Ransac: poly is invalid");
+
+                    poly.clear();
+                    continue;
+                }
+            }
         }
+
 
         // count the supporters and save them for debugging
         int count1 = 0;
@@ -1176,8 +1232,8 @@ void cLaneDetectionFu::pubAngle() {
      * else abort
      */
     if ((polyDetectedCenter || isPolyMovedCenter) && (polyDetectedRight || isPolyMovedRight)) {
-        gradientForAngle = polyDetectedRight ? gradient(y, polyRight.getInterpolationPointY(0), polyRight.getInterpolationPointY(1), polyRight.getCoefficients())
-                                             : gradient(y, movedPolyRight.getInterpolationPointY(0), movedPolyRight.getInterpolationPointY(1), movedPolyRight.getCoefficients());
+        gradientForAngle = polyDetectedRight ? gradient(y, polyRight)
+                                             : gradient(y, movedPolyRight);
 
         dstMiddleCenter = abs(polyDetectedCenter ? projImageWHalf - polyCenter.at(y)
                                                  : projImageWHalf - movedPolyCenter.at(y));
@@ -1209,12 +1265,17 @@ void cLaneDetectionFu::pubAngle() {
     double adjacentLeg = y;
     double result = atan(oppositeLeg / adjacentLeg) * 180 / PI;
 
+    double xAim = projImageWHalf + oppositeLeg;
+    if (xAim < 0 || xAim > projImageW) {
+        return;
+    }
+
     /*
      * debug points
      *
      * Note: the oppositeLeg is calculated at the origin, remember to offset it properly by the car's position relative to the image when painting in the debug window
      */
-    movedPointForAngle.setX(projImageWHalf + oppositeLeg);
+    movedPointForAngle.setX(xAim);
     movedPointForAngle.setY(y);
     pointForAngle.setX(projImageWHalf);
     pointForAngle.setY(y);
@@ -1592,6 +1653,7 @@ double cLaneDetectionFu::gradient(double x, NewtonPolynomial poly) {
  * @param prevPoly  The previous polynomial detected at this position
  * @return          True, if the polynomial counts as valid
  */
+#if 0
 bool cLaneDetectionFu::polyValid(ePosition position, NewtonPolynomial poly, NewtonPolynomial prevPoly) {
 
     if (prevPoly.getDegree() != -1) {
@@ -1625,11 +1687,12 @@ bool cLaneDetectionFu::polyValid(ePosition position, NewtonPolynomial poly, Newt
     // no previous poly available
     return true;
 }
+#endif
 
 /**
  * Checks if two polynomials are similar and do not vary too much from each other.
  */
-bool cLaneDetectionFu::isSimilar(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2) {
+double cLaneDetectionFu::getDistance(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2) {
     /*FuPoint<int> p1 = FuPoint<int>(poly1.at(polyY1), polyY1);
     FuPoint<int> p2 = FuPoint<int>(poly2.at(polyY1), polyY1);
 
@@ -1651,28 +1714,33 @@ bool cLaneDetectionFu::isSimilar(const NewtonPolynomial &poly1, const NewtonPoly
         return false;
     }*/
 
+
+    double distance = getDistance(poly1, poly2, polyY1);
+
+    distance += getDistance(poly1, poly2, polyY2);
+
+    distance += getDistance(poly1, poly2, polyY3);
+
+    return distance;
+}
+
+double cLaneDetectionFu::getGradientsDiff(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2) {
     double m1 = gradient(polyY1, poly1);
     double m2 = gradient(polyY1, poly2);
-    if (largeDistance(poly1, poly2, polyY1) || !gradientsSimilar(m1, m2)) {
-        return false;
-    }
+    double gradientsDiff = gradientsSimilar(m1, m2);
 
     m1 = gradient(polyY2, poly1);
     m2 = gradient(polyY2, poly2);
-    if (largeDistance(poly1, poly2, polyY2) || !gradientsSimilar(m1, m2)) {
-        return false;
-    }
+    gradientsDiff += gradientsSimilar(m1, m2);
 
     m1 = gradient(polyY3, poly1);
     m2 = gradient(polyY3, poly2);
-    if (largeDistance(poly1, poly2, polyY3) || !gradientsSimilar(m1, m2)) {
-        return false;
-    }
+    gradientsDiff += gradientsSimilar(m1, m2);
 
-    return true;
+    return gradientsDiff;
 }
 
-bool cLaneDetectionFu::largeDistance(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2, int y) {
+double cLaneDetectionFu::getDistance(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2, int y) {
     FuPoint<int> p1 = FuPoint<int>((int) poly1.at(y), y);
     FuPoint<int> p1Changed = FuPoint<int>(y, (int) poly1.at(y));
 
@@ -1689,8 +1757,7 @@ bool cLaneDetectionFu::largeDistance(const NewtonPolynomial &poly1, const Newton
     int distanceY = abs(p1.getY() - p2.getY());
     ROS_INFO("           p1: (%d, %d), p2: (%d, %d), distance: (%d, %d), gradient: %f", p1.getX(), p1.getY(), p2.getX(), p2.getY(), distanceX, distanceY, m);
 
-
-    return !isInRange(interestDistancePoly, p1, p2);
+    return sqrt(pow(distanceX, 2) + pow(distanceY, 2));
 }
 
 /*
@@ -1934,6 +2001,10 @@ void cLaneDetectionFu::drawAngleWindow(Mat &img) {
     cv::imshow("Lane polynomial", transformedImagePaintableLaneModel);
     cv::waitKey(1);
 #endif
+
+#ifdef SAVE_FRAME_IMAGES
+    debugWriteImg(transformedImagePaintableLaneModel, "angle");
+#endif
 }
 
 void cLaneDetectionFu::pubRGBImageMsg(cv::Mat &rgb_mat, image_transport::CameraPublisher publisher) {
@@ -2170,11 +2241,11 @@ double cLaneDetectionFu::nextGradient(double x, NewtonPolynomial &poly1,
  * @param m2    The second gradient
  * @return      True, if the diffenence between the gradients is less than 10 degrees
  */
-bool cLaneDetectionFu::gradientsSimilar(double &m1, double &m2) {
+double cLaneDetectionFu::gradientsSimilar(double &m1, double &m2) {
     double a1 = atan(m1) * 180 / PI;
     double a2 = atan(m2) * 180 / PI;
 
-    return (abs(a1 - a2) < 5);
+    return abs(a1 - a2);
 }
 
 /**

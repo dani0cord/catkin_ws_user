@@ -338,9 +338,11 @@ public:
 
     bool polyValid(ePosition, NewtonPolynomial, NewtonPolynomial);
 
-    bool isSimilar(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2);
+    double getDistance(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2);
 
-    bool largeDistance(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2, int y);
+    double getGradientsDiff(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2);
+
+    double getDistance(const NewtonPolynomial &poly1, const NewtonPolynomial &poly2, int y);
 
     int horizDistance(FuPoint<int> &p1, FuPoint<int> &p2);
 
@@ -355,7 +357,7 @@ public:
                         double &, double &,
                         std::vector<double>, std::vector<double>, double);
 
-    bool gradientsSimilar(double &, double &);
+    double gradientsSimilar(double &, double &);
 
     ePosition maxProportion();
 
