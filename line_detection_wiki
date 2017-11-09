@@ -5,31 +5,41 @@ A line detection algorithm we tested was created by [Till-Julius Krüger](http:/
 
 # Inverse Perspective Mapping
 
-In order to correctly detect traffic lanes and situation on the road in general, the optimal input would be vertical bird's eye image of current situation. Because our camera is mounted almost horizontally on top of our car, the input image has completely different perspective. Using homography projection we can transform the perspective of horizontal image into equivalent of vertical view, especially to make distorted borders of traffic lanes look parallel. This particular homography projection is called Inverse Perspective Mapping (IPMapping) and it's done by multiplication of input image with projection matrix. This matrix is calculated using the parameters of used camera and differs for each model. Input parameters are camera's horizontal and vertical focal length, horizontal and vertical optical center of the camera, the height of camera from the ground and angle of how much the camera is tilted toward the ground against horizontal position. The focal lengths and optical centers of our camera can be measured by ROS camera_calibration package, the height and angle by suitable tools. Once we have those values, we can build the inverse transformation matrix:
+In order to correctly detect traffic lanes and situations on the road in general, the optimal input would be a vertical bird's eye image of the current situation. Since our camera is mounted almost horizontally on top of our car, the input image has a completely different perspective. Using homography projection we can transform the perspective of horizontal image into an equivalent vertical view, especially to make distorted borders of traffic lanes look parallel. This particular homography projection is called Inverse Perspective Mapping (IPMapping) and it's done by multiplication of the input image with a projection matrix. This matrix is calculated using the parameters of the used camera and differs for each model. The camera's horizontal and vertical focal length, horizontal and vertical optical center of the camera, the height of camera from the ground and angle of how much the camera is tilted towards the ground against horizontal position are the input parameters. The focal lengths and optical centers of our camera can be measured by ROS camera_calibration package, the height and angle by suitable tools. Once we have those values, we can build an inverse transformation matrix:
 
 Where  and  are focal lengths,  and  are optical centres,  and  where  is the angle of the camera.
-Using this matrix, we could directly transform the image, but because of complexity of this task, we precalculate a matrix of same size as the input, each point containing the location of where corresponding pixel of input image should be mapped to in output image. Then, with every camera frame we just go through input image, look at precalculated matrix and build new remapped picture.
+Using this matrix, we could directly transform the image, but being a very complex task, we precalculate a matrix of the same size as the input. It maps each point of the input image to its new location in the output image. Then, with every camera frame we just go through the input image, look at the precalculated matrix and build a new remapped picture.
 
 # Edge detection
 
-We include IPMapper in our node instead of having it as separate node and we also transformed only the bottom half of input image that contains the road. Before we begin scanning the image for edges, we (only once per execution) generate scanlines, i.e. line segments in which we will later look for the edges. Scanlines are horizontal, perpendicular to straight lines in road image, generated inside predefined region of interest with predefined vertical distance. After receiving and transforming image from camera we walk along each of these scanlines and look for edges (significant transition from light to dark or dark to light grey). This is detected using kernel of size 5, where we subtract values in the left side of kernel and add those on right side of kernel (along with the same from previous and next row of image) to final sum, which corresponds to the gradient of this part of image. If the absolute value of this sum is higher than predefined threshold, we found an edge in the image at this position. Detected edges also have minimum distance in a scanline between them so we always detect only the most significant part of one edge.
+We include the IPMapper in our node instead of having it as separate node. We only transform only the part of the input image that contains the road. Before we begin scanning the image for edges, we (only once per execution) generate scanlines, i.e. line segments in which we will later look for the edges. Scanlines are horizontal, perpendicular to straight lines in road image, generated inside a predefined region of interest with predefined vertical distance. After receiving and transforming an image from the camera we walk along each of these scanlines and look for edges (significant transition from light to dark or dark to light grey). This is detected using kernel of size 5, where we subtract values in the left side of kernel and add those on right side of kernel (along with the same from previous and next row of image) to final sum, which corresponds to the gradient of this part of image. If the absolute value of this sum is higher than predefined threshold, we found an edge in the image at this position. Detected edges also have minimum distance in a scanline between them so we always detect only the most significant part of one edge.
 
 # Lane width detection
 
 
 # Lane Markings
 
-Detected edges are further filtered and paired so that each edge with positive gradient value has its other edge with negative gradient. These pairs of edges represent the beginning and the end of white line on black road. Resulting lane marking is in the center of these points. Detected lane markings are then sorted into three groups, each of these groups representing region where left, central and right line of traffic lane is expected to be. Note that with our camera Intel RealSense SR300 we almost never get any results in left region because of the camera’s viewing angle. The primary sorting criteria is proximity of lane marking to previously detected polynomials (one in each of these three positions), secondary criteria is proximity to the moved polynomials, final criteria (or if no polynomials were detected / moved) is proximity to predefined default vertical lines.
+Detected edges are further filtered and paired so that each edge with a positive gradient value has its other edge with negative gradient. These pairs of edges represent the beginning and the end of white line on black road. The resulting lane markings are in the center of each pair of start and end points. Detected lane markings are then sorted into three groups, each one represents a region where the left, central and right traffic lane is expected to be. Note that with our camera Intel RealSense SR300 we almost never get any results in left region because of the camera’s viewing angle. The primary sorting criteria is proximity of lane marking to previously detected polynomials (one in each of these three positions). If not all lane polynomials were found in previous frame, the secondary criteria is proximity to polynomials which are moved using the nearest detected lane polynomial. Finally, if a line point is not near to a polynomial or no polynomials were available, the distance to predefined default vertical lines is considered.
 
 # RANSAC
 
-Having these three groups of lane markings, next step is to find three polynomials which represent (are supported by) most of these lane markings. In each group, we sort lane markings vertically and divide them into three equal-sized groups – the top, central and bottom one. Then we select one from each of these groups and create Newton’s polynomial supported by these three lane markings. We check if the polynomial is valid, i.e. it’s not far from previous polynomial or from default line and we count supporter proportion (how many of lane marking lie close enough to the polynomial). If polynomial is valid and has high enough supporter proportion, we use it, otherwise we repeat this lane-creation process until we find one good enough or until we reach iteration count limit.
+TODO:
+    - Sortieren der Punkte wird schon früher irgendwo erledigt
+    - poly valid haben wir verändert
+
+Having these three groups of lane markings, next step is to find three polynomials which represent (are supported by) most of these lane markings. In each group, we sort lane markings vertically and divide them into three equally-sized groups – the top, central and bottom one. Then we select one from each of these groups and create Newton’s polynomial supported by these three lane markings. We check if the polynomial is valid, i.e. it’s not far from previous polynomial or from default line and we count supporter proportion (how many of lane marking lie close enough to the polynomial). If the polynomial is valid and has high enough supporter proportion, we use it, otherwise we repeat this lane-creation process until we find one good enough or until we reach iteration count limit.
 
 # Generate moved polynomials
 
-RANSAC may not be able detect all polynomials due to insufficient supporters being properly associated with the lane marking. To improve detection in the next frame we can shift the detected polynomials (if any) by an offset to where we guess the missing lane marking may be. We shift the polynomials by shifting the interpolation points along the normal to the gradient and interpolate a new Newton polynomial from the shifted points.
+RANSAC may not be able detect all three polynomials due to not having enough lane markings, not finding a valid polynomial during  or insufficient supporters being properly associated with the lane marking. To improve detection in the next frame we can shift the detected polynomials (if any) by the lane width to where we estimate the missing lane marking to be. This improves especially the grouping of the lane markings to a lane at the beginning of the next frame if the car is in a bend. The lane markings would be assigned to a wrong group since the vertical default lines cross different road lanes during a cure. Without proper assignment of the lane markings to a group RANSAC cannot detect any polynomials.
+
+If two lane polynomials were found during RANSAC, the nearer polynomial is moved to the missing position (e.g. the central polynomial is shifted to the left lane if the central and right lane were found). We shift the polynomials by moving the interpolation points of the selected lane polynomial along the normal of the gradient at each interpolation point. The moved points are used to interpolate a new Newton polynomial.
 
 # Steering angle
+
+TODO:
+    - erster Satz bringt lane markings, moved und polynomials durcheinander
+    - keine Variablen hinschreiben (verbal ausdrücken)
 
 Since we generated moved polynomials for all three lane markings we always use the detected / moved polynomial of the right lane marking. We calculate the normal of the gradient at the y position projImageH - angleAdjacentLeg of the right lane marking. We then shift the point of the polynomial at the y position by half the lane width. Assuming the car is always in the middle of projImageW we substract projImageWHalf from the x coordinate of the shifted point. Finally we can use trigonometric relationships to calculate the steering angle.
 
@@ -37,9 +47,17 @@ Since we generated moved polynomials for all three lane markings we always use t
 
 ## Removing the IP Mapper
 
-A major hurdle is the IPMapping process: it requires precise height and angle settings to calculate the matrix otherwise the mapped picture will be distorted and the lane detection will not work properly. We attempted to remove it, but namely in sharp curves it proves difficult to properly fit the polynomial for the center and left lane. Even if we shift the right polynomial due to the perspective distortion you can not use one lane width across the entire image, but have to use at least two different widths (one on the top and one on the bottom).
+TODO:
+    - vllt bisschen positiver ausdrücken :D
+    - ggf beschreiben, was unsere Ansätze waren
+    - Link zum branch
+
+A major hurdle is the IPMapping process: it requires precise height and angle settings to calculate the matrix. Otherwise the mapped picture will be distorted and the lane detection will not work properly. We attempted to remove it, but namely in sharp curves it proves difficult to properly fit the polynomial for the center and left lane. Even if we shift the right polynomial due to the perspective distortion you can not use one lane width across the entire image, but have to use at least two different widths (one on the top and one on the bottom).
 
 ## Multithreading / GPGPU using OpenCL
+
+TODO:
+    - easily?? Dann hätten wirs ja mal eben machen können xD
 
 There are several parts of the code which could be easily multithreaded:
 
@@ -48,6 +66,8 @@ There are several parts of the code which could be easily multithreaded:
 * RANSAC - one thread is used per lane to fit the polynomial
 
 The SoC on the Odroid XU4 also features a Mali GPU which supports OpenCL 1.1 Full Profile. It may be possible to use the GPU to do the edge detection or perform RANSAC in parallel.
+
+TODO: Was sollen diese Zeilen hier drunter???
 
 Vaclav' Blahut
 
