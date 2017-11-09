@@ -33,6 +33,36 @@ RANSAC may not be able detect all polynomials due to insufficient supporters bei
 
 Since we generated moved polynomials for all three lane markings we always use the detected / moved polynomial of the right lane marking. We calculate the normal of the gradient at the y position projImageH - angleAdjacentLeg of the right lane marking. We then shift the point of the polynomial at the y position by half the lane width. Assuming the car is always in the middle of projImageW we substract projImageWHalf from the x coordinate of the shifted point. Finally we can use trigonometric relationships to calculate the steering angle.
 
+# Debugging
+
+## \#define's
+
+Following \#define's can be uncommented / commented to enable / disable different debugging features:
+
+PUBLISH_IMAGES - publish the image to a topic visible with rviz
+
+SAVE_FRAME_IMAGES - save the current image as a .jpeg for easier frame-by-frame analysis
+
+These \#define's must be commented when code shall be compiled on the car as they display images and show them on a screen.
+
+SHOW_EDGE_WINDOW - display the edges found by the edge detection
+SHOW_LANE_MARKINGS_WINDOW - display the possible lane markings created from the detected edges
+SHOW_GROUPED_LANE_MARKINGS_WINDOW - display the grouped lane markings (color coded: left - red, center - green, right - blue, groupless - yellow)
+SHOW_RANSAC_WINDOW - display the polynomials fitted by RANSAC
+SHOW_ANGLE_WINDOW - display the normal on the (shifted) right polnomial, the target point, and the angle in which the car would steer
+
+## Additional features
+
+All previous debug windows have been moved to functions for overall cleaner code. Furthermore each window can now be resized.
+
+Debugging utility functions:
+
+The debugPaintPolynom() function paints a given Newton polynomial on the given image.
+
+The debugPaintPoints() function paints a batch of points.
+
+The debugWriteImg() writes the given image as a .jpeg to the given location.
+
 # Ideas for improving performance
 
 ## Removing the IP Mapper
