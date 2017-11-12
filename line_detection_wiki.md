@@ -12,10 +12,11 @@ Using this matrix, we could directly transform the image, but being a very compl
 
 # Edge detection
 
-We include the IPMapper in our node instead of having it as separate node. We only transform only the part of the input image that contains the road. Before we begin scanning the image for edges, we (only once per execution) generate scanlines, i.e. line segments in which we will later look for the edges. Scanlines are horizontal, perpendicular to straight lines in road image, generated inside a predefined region of interest with predefined vertical distance. After receiving and transforming an image from the camera we walk along each of these scanlines and look for edges (significant transition from light to dark or dark to light grey). This is detected using kernel of size 5, where we subtract values in the left side of kernel and add those on right side of kernel (along with the same from previous and next row of image) to final sum, which corresponds to the gradient of this part of image. If the absolute value of this sum is higher than predefined threshold, we found an edge in the image at this position. Detected edges also have minimum distance in a scanline between them so we always detect only the most significant part of one edge.
+We include the IPMapper in our node instead of having it as separate node. We only transform only the part of the input image that contains the road. Before we begin scanning the image for edges, we (only once per execution) generate scanlines, i.e. line segments in which we will later look for the edges. Scanlines are horizontal, perpendicular to straight lines in road image, generated inside a predefined region of interest with predefined vertical distance. After receiving and transforming an image from the camera we walk along each of these scanlines and look for edges (significant transition from light to dark or dark to light grey). This is detected using kernel of size 5, where we subtract values in the left side of kernel and add those on right side of kernel (along with the same from previous and next row of image) to final sum, which corresponds to the gradient of this part of image. If the absolute value of this sum is higher than predefined threshold, we found an edge in the image at this position. Detected edges also have minimum distance in a scanline between them so we always detect only the most significant part of one edge. Finally we sort the lane marking edge points by their respective y coordinate.
 
 # Lane width detection
 
+TODO:
 
 # Lane Markings
 
@@ -24,10 +25,9 @@ Detected edges are further filtered and paired so that each edge with a positive
 # RANSAC
 
 TODO:
-    - Sortieren der Punkte wird schon früher irgendwo erledigt
-    - poly valid haben wir verändert
+    - poly valid haben wir verändert -> Keine Ahnung wie
 
-Having these three groups of lane markings, next step is to find three polynomials which represent (are supported by) most of these lane markings. In each group, we sort lane markings vertically and divide them into three equally-sized groups – the top, central and bottom one. Then we select one from each of these groups and create Newton’s polynomial supported by these three lane markings. We check if the polynomial is valid, i.e. it’s not far from previous polynomial or from default line and we count supporter proportion (how many of lane marking lie close enough to the polynomial). If the polynomial is valid and has high enough supporter proportion, we use it, otherwise we repeat this lane-creation process until we find one good enough or until we reach iteration count limit.
+Having these three groups of lane markings, next step is to find three polynomials which represent (are supported by) most of these lane markings. In each group we divide them into three equally-sized groups – the top, central and bottom one. Then we select one from each of these groups and create Newton’s polynomial supported by these three lane markings. We check if the polynomial is valid, i.e. it’s not far from previous polynomial or from default line and we count supporter proportion (how many of lane marking lie close enough to the polynomial). If the polynomial is valid and has high enough supporter proportion, we use it, otherwise we repeat this lane-creation process until we find one good enough or until we reach iteration count limit.
 
 # Generate moved polynomials
 
@@ -37,15 +37,9 @@ If two lane polynomials were found during RANSAC, the nearer polynomial is moved
 
 # Steering angle
 
-TODO:
-    - erster Satz bringt lane markings, moved und polynomials durcheinander
-    - keine Variablen hinschreiben (verbal ausdrücken)
-
-Since we generated moved polynomials for all three lane markings we always use the detected / moved polynomial of the right lane marking. We calculate the normal of the gradient at the y position projImageH - angleAdjacentLeg of the right lane marking. We then shift the point of the polynomial at the y position by half the lane width. Assuming the car is always in the middle of projImageW we substract projImageWHalf from the x coordinate of the shifted point. Finally we can use trigonometric relationships to calculate the steering angle.
+Since we generated moved polynomials for all three lanes we always use the detected / moved polynomial of the right lane. We then calculate the normal of the gradient of the right lane polynomial at a y value slightly offset from the lower image fram. We then shift the point of the right lane polynomial at the y position by half the lane width. Assuming the car is always in the middle of the image we substract half of the image width from the x coordinate of the shifted point. Finally we can use trigonometric relationships to calculate the steering angle.
 
 # Debugging
-
-TODO: Speicherort der Debug Bilder angeben
 
 ## \#define's
 
@@ -53,7 +47,7 @@ Following \#define's can be uncommented / commented to enable / disable differen
 
 PUBLISH_IMAGES - publish the image to a topic visible with rviz
 
-SAVE_FRAME_IMAGES - save the current image as a .jpeg for easier frame-by-frame analysis
+SAVE_FRAME_IMAGES - save the current image as a .jpeg for easier frame-by-frame analysis, the images are storred at $HOME_DIR/.ros/
 
 These \#define's must be commented when code shall be compiled on the car as they display images and show them on a screen.
 
@@ -79,19 +73,15 @@ The debugWriteImg() writes the given image as a .jpeg to the given location.
 
 ## Removing the IP Mapper
 
-TODO:
-    - vllt bisschen positiver ausdrücken :D
-    - ggf beschreiben, was unsere Ansätze waren
-    - Link zum branch
+The IP Mapper relies on known camera height, angle and lens values.Any change in e.g. camera height will result in lane detection not working properly.By removing the IPMapper makes the code more robust and independent from underlying hardware. However this results in the need to deal with the optical distortion as lines marking the lanes are not parallel anymore.
 
-A major hurdle is the IPMapping process: it requires precise height and angle settings to calculate the matrix. Otherwise the mapped picture will be distorted and the lane detection will not work properly. We attempted to remove it, but namely in sharp curves it proves difficult to properly fit the polynomial for the center and left lane. Even if we shift the right polynomial due to the perspective distortion you can not use one lane width across the entire image, but have to use at least two different widths (one on the top and one on the bottom).
+We attempted the IP Mapper by firstly changing the horizontal default lines to arbitrary lines to handle the optical distortion on straight parts. The lane detection and polynomial fitting namely in tight curves is an issue, as not all lines are seen at any given time. Furthermore polynomials can not be shifted by one offset again due to the distortion. Therefore different offsets are needed for the top, middle, and bottom of the image. We tried to improve the automatic lane width detection to calculate the lane widths at the top and bottom image borders and calculate the value for the middle of the image by interpolation.
+
+The most recent, experimental version is located at: https://github.com/tobiasschuelke/catkin_ws_user/tree/tobias/ip_mapper_tests
 
 ## Multithreading / GPGPU using OpenCL
 
-TODO:
-    - easily?? Dann hätten wirs ja mal eben machen können xD
-
-There are several parts of the code which could be easily multithreaded:
+There are some parts of the code which could benefit from multithreading:
 
 * edge detection - spawn arbitrarily many threads, each thread walks along a subset off the scanlines
 * lane marking sorting - spawn arbitrarily many threads, each thread performs the checks used to associate a point with the lane marking on the points detected by the edge detection
@@ -100,6 +90,7 @@ There are several parts of the code which could be easily multithreaded:
 The SoC on the Odroid XU4 also features a Mali GPU which supports OpenCL 1.1 Full Profile. It may be possible to use the GPU to do the edge detection or perform RANSAC in parallel.
 
 TODO: Was sollen diese Zeilen hier drunter???
+-> Die waren schon da, keine Ahnung ==> stehen lassen!
 
 Vaclav' Blahut
 
