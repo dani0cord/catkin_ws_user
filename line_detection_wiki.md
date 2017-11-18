@@ -12,15 +12,19 @@ Using this matrix, we could directly transform the image, but being a very compl
 
 # Edge detection
 
-We include the IPMapper in our node instead of having it as separate node. We only transform only the part of the input image that contains the road. Before we begin scanning the image for edges, we (only once per execution) generate scanlines, i.e. line segments in which we will later look for the edges. Scanlines are horizontal, perpendicular to straight lines in road image, generated inside a predefined region of interest with predefined vertical distance. After receiving and transforming an image from the camera we walk along each of these scanlines and look for edges (significant transition from light to dark or dark to light grey). This is detected using kernel of size 5, where we subtract values in the left side of kernel and add those on right side of kernel (along with the same from previous and next row of image) to final sum, which corresponds to the gradient of this part of image. If the absolute value of this sum is higher than predefined threshold, we found an edge in the image at this position. Detected edges also have minimum distance in a scanline between them so we always detect only the most significant part of one edge. Finally we sort the lane marking edge points by their respective y coordinate.
-
-# Lane width detection
-
-TODO:
+We include the IPMapper in our node instead of having it as separate node. We only transform only the part of the input image that contains the road. Before we begin scanning the image for edges, we (only once per execution) generate scanlines, i.e. line segments in which we will later look for the edges. Scanlines are horizontal, perpendicular to straight lines in road image, generated inside a predefined region of interest with predefined vertical distance. After receiving and transforming an image from the camera we walk along each of these scanlines and look for edges (significant transition from light to dark or dark to light grey). This is detected using kernel of size 5, where we subtract values in the left side of kernel and add those on right side of kernel (along with the same from previous and next row of image) to final sum, which corresponds to the gradient of this part of image. If the absolute value of this sum is higher than predefined threshold, we found an edge in the image at this position. Detected edges also have minimum distance in a scanline between them so we always detect only the most significant part of one edge.
 
 # Lane Markings
 
-Detected edges are further filtered and paired so that each edge with a positive gradient value has its other edge with negative gradient. These pairs of edges represent the beginning and the end of white line on black road. The resulting lane markings are in the center of each pair of start and end points. Detected lane markings are then sorted into three groups, each one represents a region where the left, central and right traffic lane is expected to be. Note that with our camera Intel RealSense SR300 we almost never get any results in left region because of the camera’s viewing angle. The primary sorting criteria is proximity of lane marking to previously detected polynomials (one in each of these three positions). If not all lane polynomials were found in previous frame, the secondary criteria is proximity to polynomials which are moved using the nearest detected lane polynomial. Finally, if a line point is not near to a polynomial or no polynomials were available, the distance to predefined default vertical lines is considered.
+Detected edges are further filtered and paired so that each edge with a positive gradient value has its other edge with negative gradient. These pairs of edges represent the beginning and the end of white line on black road. The resulting lane markings are in the center of each pair of start and end points. We sort the lane marking edge points by their respective y coordinate (from bottom of the image to the top).
+
+# Detection of lane width and position
+
+Next we detect the x-positions of the lanes to assign the found lane markings to a lane. Moreover, we calculate the width between two lanes (e.g. right and center lane) which is needed later to move polynomials. The car should start on a straight line. The position of the car is at the half of the image width and in the bottom of the IP-mapped image only the right and center lane are visible. That is why all lane marking points in left half of the bottom of the image are considered as possible lane edge points of the center lane (analog: right half of image for right lane). We start from the bottom of the image and save possible lane marking points for the right and center lane. In the above rows we search supporter lane markings which are close to saved possible starting points. The x-value of lane markings with most supporters are used for the default right and center lanes. Afterwards, the lane width and position of the left lane can be calculated. After each default lane position and the lane width are found, this step is skipped in further frames.
+
+# Grouping of lane markings
+
+Detected lane markings are then sorted into three groups, each one represents a region where the left, central and right traffic lane is expected to be. Note that with our camera Intel RealSense SR300 we almost never get any results in left region because of the camera’s viewing angle. The primary sorting criteria is proximity of lane marking to previously detected polynomials (one in each of these three positions). If not all lane polynomials were found in previous frame, the secondary criteria is proximity to polynomials which are moved using the nearest detected lane polynomial. Finally, if a line point is not near to a polynomial or no polynomials were available, the distance to predefined default vertical lines is considered.
 
 # RANSAC
 
@@ -37,7 +41,7 @@ If two lane polynomials were found during RANSAC, the nearer polynomial is moved
 
 # Steering angle
 
-Since we generated moved polynomials for all three lanes we always use the detected / moved polynomial of the right lane. We then calculate the normal of the gradient of the right lane polynomial at a y value slightly offset from the lower image fram. We then shift the point of the right lane polynomial at the y position by half the lane width. Assuming the car is always in the middle of the image we substract half of the image width from the x coordinate of the shifted point. Finally we can use trigonometric relationships to calculate the steering angle.
+Since we generated moved polynomials for all three lanes we always use the detected / moved polynomial of the right lane. We then calculate the normal of the gradient of the right lane polynomial at a y value slightly offset from the lower image frame. We then shift the point of the right lane polynomial at the y position by half the lane width along the normal. Assuming the car is always in the middle of the image we substract half of the image width from the x coordinate of the shifted point. Finally we can use trigonometric relationships to calculate the steering angle.
 
 # Debugging
 
@@ -47,7 +51,7 @@ Following \#define's can be uncommented / commented to enable / disable differen
 
 PUBLISH_IMAGES - publish the image to a topic visible with rviz
 
-SAVE_FRAME_IMAGES - save the current image as a .jpeg for easier frame-by-frame analysis, the images are storred at $HOME_DIR/.ros/
+SAVE_FRAME_IMAGES - save the current image as a .jpeg for easier frame-by-frame analysis, the images are stored at $HOME_DIR/.ros/
 
 These \#define's must be commented when code shall be compiled on the car as they display images and show them on a screen.
 
@@ -73,9 +77,20 @@ The debugWriteImg() writes the given image as a .jpeg to the given location.
 
 ## Removing the IP Mapper
 
-The IP Mapper relies on known camera height, angle and lens values.Any change in e.g. camera height will result in lane detection not working properly.By removing the IPMapper makes the code more robust and independent from underlying hardware. However this results in the need to deal with the optical distortion as lines marking the lanes are not parallel anymore.
+The IP Mapper relies on known camera height, angle and lens values. Any change in e.g. camera height will result in lane detection not working properly. Removing the IPMapper makes the code more robust and independent from underlying hardware settings. However, this results in the need to deal with the optical distortion as the lanes are not parallel anymore in the frame images.
 
-We attempted the IP Mapper by firstly changing the horizontal default lines to arbitrary lines to handle the optical distortion on straight parts. The lane detection and polynomial fitting namely in tight curves is an issue, as not all lines are seen at any given time. Furthermore polynomials can not be shifted by one offset again due to the distortion. Therefore different offsets are needed for the top, middle, and bottom of the image. We tried to improve the automatic lane width detection to calculate the lane widths at the top and bottom image borders and calculate the value for the middle of the image by interpolation.
+TODO:
+    - Den ersten Satz verstehe ich nicht.
+        - Am Anfang fehlt wohl "remove"
+        - die default lines sind nicht horizontal
+        - "arbitrary lines" würde bedeuten, dass wir die einfach random aufs Bild werfen
+        - die "optical distortion" ist ja generell vorhanden, nicht nur auf Geraden
+    - 2. Satz: Das ist aber auch bei unserer funktionierenden Version so; das Bild hat mit/ohne IP Mapper nicht mehr/weniger Inhalt --> liegt an der Kamera, nicht am Algorithmus
+    - 3. Satz: Am besten noch dazu fügen: "um die moved polynomials zu erhalten"
+    - Letzte Sätze: Das hat ja funktioniert, also "tried" ersetzen. Vllt "we achieved to handle the distorted lane offset by" und dann was du stehen hast?
+    - Jetzt fehlt aber noch, warum es letztlich noch nicht funktioniert. Ich denke irgendwas allgemeines reicht hier. Inhaltich: Die Lane markings werden erkannt, Polynome richtig erstellt, aber lane markings können nicht mehr nach Kurven wieder richtig den 3 Spuren zugeordnet werden und dadurch werden falsche Polynome erzeugt und die Zuweisung bleibt dadurch auch in den folgenden Frames falsch
+
+We attempted the IP Mapper by firstly changing the horizontal default lines to arbitrary lines to handle the optical distortion on straight parts. The lane detection and polynomial fitting namely in tight curves is an issue, as not all lines are seen at any given time. Furthermore polynomials cannot be shifted by one offset again due to the distortion. Therefore different offsets are needed for the top, middle, and bottom of the image. We tried to improve the automatic lane width detection to calculate the lane widths at the top and bottom image borders and calculate the value for the middle of the image by interpolation.
 
 The most recent, experimental version is located at: https://github.com/tobiasschuelke/catkin_ws_user/tree/tobias/ip_mapper_tests
 
@@ -89,8 +104,7 @@ There are some parts of the code which could benefit from multithreading:
 
 The SoC on the Odroid XU4 also features a Mali GPU which supports OpenCL 1.1 Full Profile. It may be possible to use the GPU to do the edge detection or perform RANSAC in parallel.
 
-TODO: Was sollen diese Zeilen hier drunter???
--> Die waren schon da, keine Ahnung ==> stehen lassen!
+
 
 Vaclav' Blahut
 
