@@ -79,18 +79,9 @@ The debugWriteImg() writes the given image as a .jpeg to the given location.
 
 The IP Mapper relies on known camera height, angle and lens values. Any change in e.g. camera height will result in lane detection not working properly. Removing the IPMapper makes the code more robust and independent from underlying hardware settings. However, this results in the need to deal with the optical distortion as the lanes are not parallel anymore in the frame images.
 
-TODO:
-    - Den ersten Satz verstehe ich nicht.
-        - Am Anfang fehlt wohl "remove"
-        - die default lines sind nicht horizontal
-        - "arbitrary lines" würde bedeuten, dass wir die einfach random aufs Bild werfen
-        - die "optical distortion" ist ja generell vorhanden, nicht nur auf Geraden
-    - 2. Satz: Das ist aber auch bei unserer funktionierenden Version so; das Bild hat mit/ohne IP Mapper nicht mehr/weniger Inhalt --> liegt an der Kamera, nicht am Algorithmus
-    - 3. Satz: Am besten noch dazu fügen: "um die moved polynomials zu erhalten"
-    - Letzte Sätze: Das hat ja funktioniert, also "tried" ersetzen. Vllt "we achieved to handle the distorted lane offset by" und dann was du stehen hast?
-    - Jetzt fehlt aber noch, warum es letztlich noch nicht funktioniert. Ich denke irgendwas allgemeines reicht hier. Inhaltich: Die Lane markings werden erkannt, Polynome richtig erstellt, aber lane markings können nicht mehr nach Kurven wieder richtig den 3 Spuren zugeordnet werden und dadurch werden falsche Polynome erzeugt und die Zuweisung bleibt dadurch auch in den folgenden Frames falsch
+We attempted to remove the IP Mapper by firstly changing the vertical default values to lines to handle the optical distortion on straight parts. (Tight) Curves remain an issue: not all lines are seen at any given time due to the camera's position. Furthermore the polynomials cannot be shifted by one offset to obtain the moved polynomials  due to the distortion. Therefore different offsets are needed for the top, middle, and bottom of the image. We managed to handle the distorted lane offset by improving the automatic lane width detection to calculate the lane widths at the top and bottom image borders. We also calculated the value for the middle of the image using interpolation.
 
-We attempted the IP Mapper by firstly changing the horizontal default lines to arbitrary lines to handle the optical distortion on straight parts. The lane detection and polynomial fitting namely in tight curves is an issue, as not all lines are seen at any given time. Furthermore polynomials cannot be shifted by one offset again due to the distortion. Therefore different offsets are needed for the top, middle, and bottom of the image. We tried to improve the automatic lane width detection to calculate the lane widths at the top and bottom image borders and calculate the value for the middle of the image by interpolation.
+In conclusion we did not manage to remove the IP Mapper: the lane detection worked without the IP Mapper for straight parts. As soon as the car drove through the first curve the lane markings weren't matched correctly to the polynomials despite the polynomials being properly aligned with the beginning of the curve.
 
 The most recent, experimental version is located at: https://github.com/tobiasschuelke/catkin_ws_user/tree/tobias/ip_mapper_tests
 
