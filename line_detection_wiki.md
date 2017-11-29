@@ -28,10 +28,7 @@ Detected lane markings are then sorted into three groups, each one represents a 
 
 # RANSAC
 
-TODO:
-    - poly valid haben wir verändert -> Keine Ahnung wie
-
-Having these three groups of lane markings, next step is to find three polynomials which represent (are supported by) most of these lane markings. In each group we divide them into three equally-sized groups – the top, central and bottom one. Then we select one from each of these groups and create Newton’s polynomial supported by these three lane markings. We check if the polynomial is valid, i.e. it’s not far from previous polynomial or from default line and we count supporter proportion (how many of lane marking lie close enough to the polynomial). If the polynomial is valid and has high enough supporter proportion, we use it, otherwise we repeat this lane-creation process until we find one polynomial which is good enough or until we reach iteration count limit.
+Having these three groups of lane markings, next step is to find three polynomials which represent (are supported by) most of these lane markings. In each group we divide them into three equally-sized groups – the top, central and bottom one. Then we select one from each of these groups and create Newton’s polynomial supported by these three lane markings. We check if the polynomial is valid. A polynomial is valid if it’s not far from the previous polynomial or if no previous polynomial is available from the default or moved polynomial. Moreover, we count supporter proportion (how many of lane marking lie close enough to the polynomial). If the polynomial is valid and has high enough supporter proportion, we use it, otherwise we repeat this lane-creation process until we find one polynomial which is good enough or until we reach iteration count limit.
 
 # Generate moved polynomials
 
