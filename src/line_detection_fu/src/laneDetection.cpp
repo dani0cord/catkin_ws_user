@@ -6,8 +6,8 @@ using namespace std;
 #define SAVE_FRAME_IMAGES
 
 // show windows with results of each step in pipeline of one frame
-//#define SHOW_EDGE_WINDOW
-//#define SHOW_LANE_MARKINGS_WINDOW
+#define SHOW_EDGE_WINDOW
+#define SHOW_LANE_MARKINGS_WINDOW
 #define SHOW_GROUPED_LANE_MARKINGS_WINDOW
 #define SHOW_RANSAC_WINDOW
 #define SHOW_ANGLE_WINDOW
@@ -178,6 +178,16 @@ cLaneDetectionFu::cLaneDetectionFu(ros::NodeHandle nh) : nh_(nh), priv_nh_("~") 
 
 #ifdef SAVE_FRAME_IMAGES
     struct stat st;
+    if (!stat("laneMarkings", &st))
+        system("exec rm -r ./laneMarkings/*");
+    else
+        mkdir("laneMarkings", S_IRWXU);
+
+    if (!stat("edges", &st))
+        system("exec rm -r ./edges/*");
+    else
+        mkdir("edges", S_IRWXU);
+
     if (!stat("groupedLaneMarkings", &st))
         system("exec rm -r ./groupedLaneMarkings/*");
     else
@@ -1262,7 +1272,7 @@ void cLaneDetectionFu::pubAngle() {
     /*
      * calculate steering angle
      */
-    double adjacentLeg = y;
+    double adjacentLeg = angleAdjacentLeg;
     double result = atan(oppositeLeg / adjacentLeg) * 180 / PI;
 
     double xAim = projImageWHalf + oppositeLeg;
@@ -1278,7 +1288,7 @@ void cLaneDetectionFu::pubAngle() {
     movedPointForAngle.setX(xAim);
     movedPointForAngle.setY(y);
     pointForAngle.setX(projImageWHalf);
-    pointForAngle.setY(y);
+    pointForAngle.setY(projImageH);
 
     /*
      * filter too rash steering angles / jitter in polynomial data
@@ -1780,6 +1790,10 @@ void cLaneDetectionFu::drawEdgeWindow(Mat &img, vector<vector<EdgePoint>> edges)
     cv::namedWindow("ROI, scanlines and edges", WINDOW_NORMAL);
     cv::imshow("ROI, scanlines and edges", transformedImagePaintable);
     cv::waitKey(1);
+
+#ifdef SAVE_FRAME_IMAGES
+    debugWriteImg(transformedImagePaintable, "edges");
+#endif
 }
 
 void cLaneDetectionFu::drawLaneMarkingsWindow(Mat &img, vector<FuPoint<int>> &laneMarkings) {
@@ -1795,6 +1809,10 @@ void cLaneDetectionFu::drawLaneMarkingsWindow(Mat &img, vector<FuPoint<int>> &la
     cv::namedWindow("Lane Markings", WINDOW_NORMAL);
     cv::imshow("Lane Markings", transformedImagePaintable);
     cv::waitKey(1);
+
+#ifdef SAVE_FRAME_IMAGES
+    debugWriteImg(transformedImagePaintable, "laneMarkings");
+#endif
 }
 
 void cLaneDetectionFu::drawGroupedLaneMarkingsWindow(Mat &img) {
@@ -1970,22 +1988,14 @@ void cLaneDetectionFu::drawAngleWindow(Mat &img) {
                                             projImageH - (cos(lastAngle * PI / 180) * angleAdjacentLeg));
         cv::line(transformedImagePaintableLaneModel, pointLoc, anglePointLoc, cv::Scalar(255, 255, 255));
 
-        cv::Point startNormalPoint = cv::Point(pointForAngle.getX(), pointForAngle.getY());
-        cv::circle(transformedImagePaintableLaneModel, startNormalPoint, 2, cv::Scalar(100, 100, 100), -1);
+        /*cv::Point startNormalPoint = cv::Point(pointForAngle.getX(), pointForAngle.getY());
+        cv::circle(transformedImagePaintableLaneModel, startNormalPoint, 2, cv::Scalar(100, 100, 100), -1);*/
 
         cv::Point targetPoint = cv::Point(movedPointForAngle.getX(), movedPointForAngle.getY());
         cv::circle(transformedImagePaintableLaneModel, targetPoint, 2, cv::Scalar(0, 0, 255), -1);
 
-        // TODO: what was this for?
-        double m = -gradientForAngle;
-
-        double n = movedPointForAngle.getY() - m * movedPointForAngle.getX();
-        double x = 10;
-        double y = m * x + n;
-        //
-
-        cv::Point endNormalPoint = cv::Point(movedPointForAngle.getX(), movedPointForAngle.getY());
-        cv::line(transformedImagePaintableLaneModel, startNormalPoint, endNormalPoint, cv::Scalar(0, 0, 0));
+        /*cv::Point endNormalPoint = cv::Point(movedPointForAngle.getX(), movedPointForAngle.getY());
+        cv::line(transformedImagePaintableLaneModel, startNormalPoint, endNormalPoint, cv::Scalar(0, 0, 0));*/
 
     } else {
         cv::Point pointLoc = cv::Point(5, 5);
