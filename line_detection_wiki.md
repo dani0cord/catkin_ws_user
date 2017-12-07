@@ -80,7 +80,7 @@ We attempted to remove the IP Mapper by firstly changing the vertical default va
 
 In conclusion we did not manage to remove the IP Mapper: the lane detection worked without the IP Mapper for straight parts. As soon as the car drove through the first curve the lane markings weren't matched correctly to the polynomials despite the polynomials being properly aligned with the beginning of the curve.
 
-The most recent, experimental version is located at: https://github.com/tobiasschuelke/catkin_ws_user/tree/tobias/ip_mapper_tests
+The most recent, experimental version is located at: https://github.com/tobiasschuelke/catkin_ws_user/tree/remove_ip_mapper
 
 ## Multithreading / GPGPU using OpenCL
 
